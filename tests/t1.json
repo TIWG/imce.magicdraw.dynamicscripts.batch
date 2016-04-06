@@ -1,0 +1,17 @@
+{
+  "requiredPlugins": ["gov.nasa.jpl.magicdraw.dynamicScripts"],
+  "dynamicScriptFiles": [
+    "dynamicScripts/gov.nasa.jpl.omf.scala.magicdraw.exporter/resources/omf.exporter.dynamicScripts",
+    "dynamicScripts/imce.oti.uml.magicdraw.dynamicscripts/resources/oti.dynamicScripts"
+  ],
+  "projectLocation": {
+    "localProjectFile":"/home/rouquett/Documents/EuropaModels/EuropaFrameworkOTI.mdzip",
+    "type":"MagicDrawLocalProjectLocation"},
+
+  "testScript": {
+    "diagramID":"_18_0_4_ff3038a_1446568290018_912773_43315",
+    "instanceSpecificationID":"_18_0_4_ff3038a_1446567184930_908153_42145",
+    "type":"InvokeDiagramContextMenuActionForSelection"},
+
+  "type": "SimpleMagicDrawTestSpec"
+}
