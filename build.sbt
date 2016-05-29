@@ -158,6 +158,10 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
     // https://github.com/aparo/play-json-extra
     libraryDependencies += "io.megl" %% "play-json-extra" % "2.4.3",
 
+    libraryDependencies +=
+      "gov.nasa.jpl.imce.thirdParty" %% "other-scala-libraries" % Versions_other_scala_libraries.version artifacts
+        Artifact("other-scala-libraries", "zip", "zip", Some("resource"), Seq(), None, Map()),
+
     mdRoot := file("/opt/local/imce/users/nfr/tools/MagicDraw/cae_md18_0_sp5_mdk-2.3-RC3/"),
 
     specsRoot := baseDirectory.value / "tests",

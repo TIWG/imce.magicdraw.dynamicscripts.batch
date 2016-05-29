@@ -38,13 +38,26 @@
  */
 package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch
 
+import gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json.OTIPrimitiveTypes._
 import play.json.extra._
 import play.api.libs.json._
 
 import scala.Int
 import scala.Predef.String
+import scalaz._
 
 package object json {
+
+  implicit def taggedStringFormat[T]
+  : Format[String @@ T]
+  = new Format[String @@ T] {
+    def reads(json: JsValue): JsResult[String @@ T] = json match {
+      case JsString(v) => JsSuccess(Tag.of[T](v))
+      case unknown => JsError(s"String value expected, got: $unknown")
+    }
+
+    def writes(v: String @@ T): JsValue = JsString(Tag.unwrap(v))
+  }
 
   implicit val formatMagicDrawProjectLocation
   : Format[MagicDrawProjectLocation]
@@ -81,5 +94,17 @@ package object json {
   implicit val writesMagicDrawTestSpec
   : Writes[MagicDrawTestSpec]
   = Variants.writes[MagicDrawTestSpec]((__ \ "type").write[String])
+
+  implicit val formatOTIArtifactKind
+  : Format[OTIArtifactKind]
+  = Variants.format[OTIArtifactKind]
+
+  implicit val readsOTIArtifactKind
+  : Reads[OTIArtifactKind]
+  = Variants.reads[OTIArtifactKind]
+
+  implicit val writesOTIArtifactKind
+  : Writes[OTIArtifactKind]
+  = Variants.writes[OTIArtifactKind]
 
 }
