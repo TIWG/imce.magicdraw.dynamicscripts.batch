@@ -65,19 +65,23 @@ object MagicDrawLocalProjectLocation {
 
 }
 
+/**
+  *
+  * @param teamworkServer
+  * @param teamworkPort
+  * @param teamworkUser
+  * @param teamworkPassword
+  * @param teamworkProjectPath From MD Open API (TeamworkUtils):
+  *                            "MyProject" with no branches =
+  *                            "MyProject" "MyProject" branch ["release"] =
+  *                            "MyProject##release" "MyProject" branch with subbranch ["release", "sp1"] =
+  *                            "MyProject##release##sp1"
+  */
 case class MagicDrawTeamworkProjectLocation
 ( teamworkServer: String,
   teamworkPort: Int,
   teamworkUser: String,
   teamworkPassword: String,
-
-  /**
-    * projectQName: From MD Open API (TeamworkUtils)
-    *
-    * "MyProject" with no branches = "MyProject" "MyProject" branch ["release"] =
-    * "MyProject##release" "MyProject" branch with subbranch ["release", "sp1"] =
-    * "MyProject##release##sp1"
-    */
   teamworkProjectPath: String)
   extends MagicDrawProjectLocation {
 
