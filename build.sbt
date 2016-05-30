@@ -111,6 +111,21 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
   //.settings(docSettings(diagrams=false))
   .settings(IMCEReleasePlugin.packageReleaseProcessSettings )
   .settings(
+    releaseProcess := Seq(
+      IMCEReleasePlugin.clearSentinel,
+      IMCEReleasePlugin.checkUncommittedChanges,
+      sbtrelease.ReleaseStateTransformations.checkSnapshotDependencies,
+      sbtrelease.ReleaseStateTransformations.inquireVersions,
+      IMCEReleasePlugin.extractStep,
+      IMCEReleasePlugin.setReleaseVersion,
+      IMCEReleasePlugin.runCompile,
+      sbtrelease.ReleaseStateTransformations.tagRelease,
+      sbtrelease.ReleaseStateTransformations.publishArtifacts,
+      sbtrelease.ReleaseStateTransformations.pushChanges,
+      sbtrelease.ReleaseStateTransformations.runTest,
+      IMCEReleasePlugin.successSentinel
+    ),
+
     IMCEKeys.licenseYearOrRange := "2014-2016",
     IMCEKeys.organizationInfo := IMCEPlugin.Organizations.oti,
     IMCEKeys.targetJDK := IMCEKeys.jdk18.value,
@@ -154,8 +169,6 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
     parallelExecution in Test := false,
 
     fork in Test := true,
-
-    testGrouping in Test <<= testGrouping in Test dependsOn (packageBin in Universal),
 
     testGrouping in Test <<=
       ( testGrouping in Test,
