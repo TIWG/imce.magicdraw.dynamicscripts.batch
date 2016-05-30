@@ -155,12 +155,12 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     fork in Test := true,
 
-    testGrouping in Test <<= testGrouping in Test dependsOn packagedArtifacts,
+    testGrouping in Test <<= testGrouping in Test dependsOn (packageBin in Universal),
 
     testGrouping in Test <<=
       ( testGrouping in Test,
         mdRoot,
-        packagedArtifacts,
+        packageBin in Universal,
         mdJVMFlags,
         javaHome,
         classDirectory in Compile,
@@ -174,14 +174,11 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
           val ds_dir = md_install_dir / "dynamicScripts"
 
-          pas
-            .filter { case (a, f) => a.`type` == "zip" }
-            .foreach { case (a, f) =>
-              val files = IO.unzip(f, ds_dir)
-              s.log.info(
-                s"=> Installed ${files.size} " +
-                  s"files extracted from zip: $a")
-            }
+          val files = IO.unzip(pas, ds_dir)
+          s.log.info(
+            s"=> Installed ${files.size} " +
+              s"files extracted from zip: $pas")
+
 
           val tests_dir = ds_dir / "imce.magicdraw.dynamicscripts.batch" / "resources" / "tests"
 
@@ -389,7 +386,7 @@ def dynamicScriptsResourceSettings(dynamicScriptsProjectName: Option[String] = N
       packageDoc in Test,
       streams) map {
       (dir, bin, src, doc, binT, srcT, docT, s) =>
-          ((dir --- dir / "target") ** "*.md").pair(relativeTo(dir)) ++
+          ((dir ** "*.md") --- (dir / "target" ***)).pair(relativeTo(dir)) ++
           com.typesafe.sbt.packager.MappingsHelper.directory(dir / "resources") ++
           addIfExists(bin, "lib/" + bin.name) ++
           addIfExists(binT, "lib/" + binT.name) ++
