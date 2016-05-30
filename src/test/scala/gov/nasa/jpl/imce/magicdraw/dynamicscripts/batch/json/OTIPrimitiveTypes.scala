@@ -105,7 +105,7 @@ object OTIPrimitiveTypes {
     * - `x.isThat`: The OTI_ID String is empty; the OTI_UUID String is defined, it can be retrieved as the option `x.b`.
     * - `x.isBoth`: Both the OTI_ID String and OTI_UUID String are defined, they can be retried as the options `x.pad`.
     *
-    * @see [[scalaz.\&/]] (the link is broken, replace the fragment with `#scalaz.\$bslash\$amp\$div`)
+    * @see `scalaz.\&/` (the link is broken, replace the fragment with `#scalaz.\$bslash\$amp\$div`)
     * @see [[http://eed3si9n.com/learning-scalaz/Tagged+type.html]] (this article reflects scalaz 7.1, 7.2 is a bit different)
     */
   type OTI_ID_UUID = \&/[String @@ OTI_ID, String @@ OTI_UUID]
