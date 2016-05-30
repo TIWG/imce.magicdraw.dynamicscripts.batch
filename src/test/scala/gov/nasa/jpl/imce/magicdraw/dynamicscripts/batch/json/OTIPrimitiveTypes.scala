@@ -100,7 +100,7 @@ object OTIPrimitiveTypes {
 
   /**
     * A 2-tuple of an optional OTI_ID String and an optional OTI_UUID String, at least one must be specified.
-    * Given its definition as a [[scalaz.TheseInstances]], the possible values for a variable `x: OTI_ID_UUID` are:
+    * Given its definition as a `scalaz.TheseInstances`, the possible values for a variable `x: OTI_ID_UUID` are:
     * - `x.isThis`: The OTI_ID String is defined, it can be retrieved as the option `x.a`; the OTI_UUID String is empty.
     * - `x.isThat`: The OTI_ID String is empty; the OTI_UUID String is defined, it can be retrieved as the option `x.b`.
     * - `x.isBoth`: Both the OTI_ID String and OTI_UUID String are defined, they can be retried as the options `x.pad`.
