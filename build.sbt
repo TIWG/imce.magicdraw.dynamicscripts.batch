@@ -102,20 +102,13 @@ lazy val specsRoot = SettingKey[File]("specs-root", "MagicDraw DynamicScripts Te
 
 lazy val runMDTests = taskKey[Unit]("Run MagicDraw DynamicScripts Unit Tests")
 
-/*
- * For now, we can't compile in strict mode because the Scala macros used for generating the JSon adapters
- * results in a compilation warning:
- *
- * Warning:(1, 0) Unused import
- * / *
- * ^
- *
- */
+lazy val mdJVMFlags = SettingKey[Seq[String]]("md-jvm-flags", "Extra JVM flags for running MD (e.g., debugging)")
+
 lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
   .enablePlugins(IMCEGitPlugin)
   .enablePlugins(IMCEReleasePlugin)
   .settings(dynamicScriptsResourceSettings(Some("imce.magicdraw.dynamicscripts.batch")))
-  //.settings(IMCEPlugin.strictScalacFatalWarningsSettings)
+  .settings(IMCEPlugin.strictScalacFatalWarningsSettings)
   .settings(docSettings(diagrams=false))
   .settings(IMCEReleasePlugin.packageReleaseProcessSettings)
   .settings(
@@ -158,16 +151,15 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
     // https://github.com/aparo/play-json-extra
     libraryDependencies += "io.megl" %% "play-json-extra" % "2.4.3",
 
-    libraryDependencies +=
-      "gov.nasa.jpl.imce.thirdParty" %% "other-scala-libraries" % Versions_other_scala_libraries.version artifacts
-        Artifact("other-scala-libraries", "zip", "zip", Some("resource"), Seq(), None, Map()),
+    mdJVMFlags := Seq(), //
+    // for debugging: Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"),
 
-    mdRoot := file("/opt/local/imce/users/nfr/tools/MagicDraw/cae_md18_0_sp5_mdk-2.3-RC3/"),
+    mdRoot := baseDirectory.value / "target" / "md.package",
 
     specsRoot := baseDirectory.value / "tests",
 
-    runMDTests <<= (mdRoot, specsRoot, javaHome, classDirectory in Compile, streams) map {
-      (md_install_dir, tests_dir, jHome, class_dir, s) =>
+    runMDTests <<= (mdRoot, specsRoot, mdJVMFlags, javaHome, classDirectory in Compile, streams) map {
+      (md_install_dir, tests_dir, jvmFlags, jHome, class_dir, s) =>
 
         s.log.info(s"# md.install.dir=$md_install_dir")
         s.log.info(s"# test specs.dir=$tests_dir")
@@ -219,7 +211,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
           workingDirectory = Some(md_install_dir),
           runJVMOptions = Seq(
             "-classpath", classpath
-          ),
+          ) ++ jvmFlags,
           envVars = Map(
             "FL_FORCE_USAGE" -> "true",
             "FL_SERVER_ADDRESS" -> "cae-lic01.jpl.nasa.gov",
@@ -246,6 +238,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
       ( testGrouping in Test,
         mdRoot,
         specsRoot,
+        mdJVMFlags,
         javaHome,
         classDirectory in Compile,
         connectInput,
@@ -254,7 +247,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
         envVars,
         streams ) map {
 
-        (original, md_install_dir, tests_dir, jHome, class_dir, cInput, outputS, jOpts, env, s) =>
+        (original, md_install_dir, tests_dir, jvmFlags, jHome, class_dir, cInput, outputS, jOpts, env, s) =>
 
           val weaverJar: File = {
             val weaverJars = ((md_install_dir / "lib" / "aspectj") * "aspectjweaver-*.jar").get
@@ -306,7 +299,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
               outputStrategy = outputS,
               runJVMOptions = jOpts ++ Seq(
                 "-classpath", classpath
-              ),
+              ) ++ jvmFlags,
               workingDirectory = Some(md_install_dir),
               envVars = env +
                 ("FL_FORCE_USAGE" -> "true") +
@@ -322,57 +315,83 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
           }
       }
   )
+  .dependsOnSourceProjectOrLibraryArtifacts(
+    "imce-oti-mof-magicdraw-dynamicscripts",
+    "imce.oti.mof.magicdraw.dynamicscripts",
+    Seq(
+      "gov.nasa.jpl.imce.oti" %% "imce-oti-mof-magicdraw-dynamicscripts"
+        % Versions_imce_oti_mof_magicdraw_dynamicscripts.version % "compile" withSources() withJavadoc() artifacts
+        Artifact("imce-oti-mof-magicdraw-dynamicscripts", "zip", "zip", Some("resource"), Seq(), None, Map())
+    )
+  )
   .settings(
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test,compile",
 
-    libraryDependencies +=
-      "gov.nasa.jpl.imce.magicdraw.plugins" %% "imce_md18_0_sp5_dynamic-scripts"
-        % Versions_imce_md18_0_sp5_dynamic_scripts.version %
-        "compile" withSources() withJavadoc() artifacts
-        Artifact("imce_md18_0_sp5_dynamic-scripts", "zip", "zip", Some("resource"), Seq(), None, Map()),
+    extractArchives <<= (baseDirectory, update, streams) map {
+      (base, up, s) =>
 
-    extractArchives := {},
+        val mdInstallDir = base / "target" / "md.package"
+        if (!mdInstallDir.exists) {
 
-//    extractArchives <<= (baseDirectory, update, streams) map {
-//      (base, up, s) =>
-//
-//        val mdInstallDir = base / "target" / "md.package"
-//        if (!mdInstallDir.exists) {
-//
-//          IO.createDirectory(mdInstallDir)
-//
-//          val pfilter: DependencyFilter = new DependencyFilter {
-//            def apply(c: String, m: ModuleID, a: Artifact): Boolean =
-//              (a.`type` == "zip" || a.`type` == "resource") &&
-//                a.extension == "zip" &&
-//                ( m.organization == "gov.nasa.jpl.cae.magicdraw.packages" ||
-//                  m.organization == "gov.nasa.jpl.imce.magicdraw.plugins")
-//          }
-//
-//          val ps: Seq[File] = up.matching(pfilter)
-//          ps.foreach { zip =>
-//            val files = IO.unzip(zip, mdInstallDir)
-//            s.log.info(
-//              s"=> created md.install.dir=$mdInstallDir with ${files.size} " +
-//                s"files extracted from zip: ${zip.getName}")
-//          }
-//
-//          val mdBinFolder = mdInstallDir / "bin"
-//          require(mdBinFolder.exists, "md bin: $mdBinFolder")
-//
-//        } else {
-//          s.log.info(
-//            s"=> use existing md.install.dir=$mdInstallDir")
-//        }
-//
-//    },
+          IO.createDirectory(mdInstallDir)
 
-    //unmanagedJars in Compile <++= (baseDirectory, update, streams, extractArchives) map {
-    unmanagedJars in Compile <++= (mdRoot, update, streams, extractArchives) map {
+          val pfilter: DependencyFilter = new DependencyFilter {
+            def apply(c: String, m: ModuleID, a: Artifact): Boolean =
+              (a.`type` == "zip" || a.`type` == "resource") &&
+                a.extension == "zip" &&
+                ( m.organization == "gov.nasa.jpl.cae.magicdraw.packages" ||
+                  m.organization == "gov.nasa.jpl.imce.magicdraw.plugins" )
+          }
+
+          val ps: Seq[File] = up.matching(pfilter)
+          ps.foreach { zip =>
+            val files = IO.unzip(zip, mdInstallDir)
+            s.log.info(
+              s"=> created md.install.dir=$mdInstallDir with ${files.size} " +
+                s"files extracted from zip: ${zip.getName}")
+          }
+
+          val mdBinFolder = mdInstallDir / "bin"
+          require(mdBinFolder.exists, "md bin: $mdBinFolder")
+
+          val dsFolder = mdInstallDir / "dynamicScripts"
+          IO.createDirectory(dsFolder)
+
+          val zfilter: DependencyFilter = new DependencyFilter {
+            def apply(c: String, m: ModuleID, a: Artifact): Boolean =
+              c == "compile" &&
+                (a.`type` == "zip" || a.`type` == "resource") &&
+                a.extension == "zip" && {
+
+                val filter =
+                  m.organization == "org.omg.tiwg" ||
+                    m.organization == "gov.nasa.jpl.imce.oti" ||
+                    m.organization == "gov.nasa.jpl.imce.omf"
+
+                if (!filter)
+                  s.log.info(s"-- excluding: ${m.organization}, ${a.name}")
+
+                filter
+              }
+          }
+          val zs: Seq[File] = up.matching(zfilter)
+          zs.foreach { zip =>
+            val files = IO.unzip(zip, dsFolder)
+            s.log.info(
+              s"=> extracted dynamic scripts with ${files.size} from zip: ${zip.getName}")
+          }
+
+        } else {
+          s.log.info(
+            s"=> use existing md.install.dir=$mdInstallDir")
+        }
+
+    },
+
+    unmanagedJars in Compile <++= (baseDirectory, update, streams, extractArchives) map {
         (base, up, s, _) =>
 
-        //val mdInstallDir = base / "target" / "md.package"
-        val mdInstallDir = base
+        val mdInstallDir = base / "target" / "md.package"
 
         val libJars = ((mdInstallDir / "lib") ** "*.jar").get
         s.log.info(s"jar libraries: ${libJars.size}")
@@ -380,11 +399,10 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
         val pluginJars = ((mdInstallDir / "plugins" / "gov.nasa.jpl.magicdraw.dynamicScripts") ** "*.jar").get
         s.log.info(s"plugin libraries: ${pluginJars.size}")
 
-          //val dsJars = ((mdInstallDir / "dynamicScripts") * "*" / "lib" ** "*.jar").get
-        //s.log.info(s"jar dynamic script: ${dsJars.size}")
+        val dsJars = ((mdInstallDir / "dynamicScripts") * "*" / "lib" ** "*.jar").get
+        s.log.info(s"jar dynamic script: ${dsJars.size}")
 
-        //val mdJars = (libJars ++ dsJars).map { jar => Attributed.blank(jar) }
-        val mdJars = (libJars ++ pluginJars).map { jar => Attributed.blank(jar) }
+        val mdJars = (libJars ++ pluginJars ++ dsJars).map { jar => Attributed.blank(jar) }
 
         mdJars
     },

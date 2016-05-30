@@ -54,3 +54,13 @@ Example of an IMCE DynamicScript test specification: [t1.json](tests/t1.json):
 }
 ```
 
+## Debugging
+
+One-time debugging at the SBT prompt:
+
+```
+> set mdJVMFlags := Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005")
+> test
+```
+
+Alternatively, change the build.sbt file.

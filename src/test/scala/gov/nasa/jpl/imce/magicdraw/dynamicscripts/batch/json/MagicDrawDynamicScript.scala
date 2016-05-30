@@ -38,6 +38,9 @@
  */
 package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json
 
+import play.api.libs.json._
+import play.json.extra._
+
 import scala.Predef.String
 
 sealed abstract trait MagicDrawDynamicScript {
@@ -74,5 +77,13 @@ case class InvokeDiagramContextMenuActionForSelection
   override def testName
   : String
   = "InvokeDiagramContextMenu(instanceSpecification=" + instanceSpecificationID + ")"
+
+}
+
+object MagicDrawDynamicScript {
+
+  implicit val formats
+  : Format[MagicDrawDynamicScript]
+  = Variants.format[MagicDrawDynamicScript]((__ \ "type").format[String])
 
 }

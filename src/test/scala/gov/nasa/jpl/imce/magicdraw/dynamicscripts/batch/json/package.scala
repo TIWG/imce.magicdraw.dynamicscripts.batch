@@ -38,11 +38,9 @@
  */
 package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch
 
-import gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json.OTIPrimitiveTypes._
-import play.json.extra._
 import play.api.libs.json._
 
-import scala.Int
+import scala.StringContext
 import scala.Predef.String
 import scalaz._
 
@@ -58,53 +56,5 @@ package object json {
 
     def writes(v: String @@ T): JsValue = JsString(Tag.unwrap(v))
   }
-
-  implicit val formatMagicDrawProjectLocation
-  : Format[MagicDrawProjectLocation]
-  = Variants.format[MagicDrawProjectLocation]((__ \ "type").format[String])
-
-  implicit val readsMagicDrawProjectLocation
-  : Reads[MagicDrawProjectLocation]
-  = Variants.reads[MagicDrawProjectLocation]((__ \ "type").read[String])
-
-  implicit val writesMagicDrawProjectLocation
-  : Writes[MagicDrawProjectLocation]
-  = Variants.writes[MagicDrawProjectLocation]((__ \ "type").write[String])
-
-  implicit val formatMagicDrawDynamicScript
-  : Format[MagicDrawDynamicScript]
-  = Variants.format[MagicDrawDynamicScript]((__ \ "type").format[String])
-
-  implicit val readsMagicDrawDynamicScript
-  : Reads[MagicDrawDynamicScript]
-  = Variants.reads[MagicDrawDynamicScript]((__ \ "type").read[String])
-
-  implicit val writesMagicDrawDynamicScript
-  : Writes[MagicDrawDynamicScript]
-  = Variants.writes[MagicDrawDynamicScript]((__ \ "type").write[String])
-
-  implicit val formatMagicDrawTestSpec
-  : Format[MagicDrawTestSpec]
-  = Variants.format[MagicDrawTestSpec]((__ \ "type").format[String])
-
-  implicit val readsMagicDrawTestSpec
-  : Reads[MagicDrawTestSpec]
-  = Variants.reads[MagicDrawTestSpec]((__ \ "type").read[String])
-
-  implicit val writesMagicDrawTestSpec
-  : Writes[MagicDrawTestSpec]
-  = Variants.writes[MagicDrawTestSpec]((__ \ "type").write[String])
-
-  implicit val formatOTIArtifactKind
-  : Format[OTIArtifactKind]
-  = Variants.format[OTIArtifactKind]
-
-  implicit val readsOTIArtifactKind
-  : Reads[OTIArtifactKind]
-  = Variants.reads[OTIArtifactKind]
-
-  implicit val writesOTIArtifactKind
-  : Writes[OTIArtifactKind]
-  = Variants.writes[OTIArtifactKind]
 
 }

@@ -38,17 +38,18 @@
  */
 package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch
 
-import org.junit._
 import java.awt.event.ActionEvent
 import java.io.{File, FilenameFilter}
-import java.lang.{Integer, System}
+import java.lang.{Integer, System, Thread}
+import java.net.URLClassLoader
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path, Paths}
 
-import com.nomagic.actions.NMAction
 import junit.framework.Test
 import junit.framework.TestSuite
 import junit.framework.TestListener
+
+import com.nomagic.actions.NMAction
 import com.nomagic.magicdraw.annotation.AnnotationManager
 import com.nomagic.magicdraw.core.Application
 import com.nomagic.magicdraw.core.Project
@@ -68,15 +69,20 @@ import com.nomagic.magicdraw.tests.MagicDrawTestCase
 import com.nomagic.magicdraw.uml.symbols.{DiagramPresentationElement, PresentationElement}
 import com.nomagic.uml2.ext.jmi.helpers.StereotypesHelper
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.{Diagram, Element, InstanceSpecification, LiteralString}
+
 import gov.nasa.jpl.dynamicScripts.DynamicScriptsTypes.{DiagramContextMenuAction, DynamicActionScript, MainToolbarMenuAction}
 import gov.nasa.jpl.dynamicScripts.magicdraw._
 import gov.nasa.jpl.dynamicScripts.magicdraw.validation.MagicDrawValidationDataResults
 import gov.nasa.jpl.dynamicScripts._
+import gov.nasa.jpl.dynamicScripts.magicdraw.ClassLoaderHelper.ResolvedClassAndMethod
 import gov.nasa.jpl.dynamicScripts.magicdraw._
 import gov.nasa.jpl.dynamicScripts.magicdraw.actions._
 import gov.nasa.jpl.dynamicScripts.magicdraw.utils.MDUML
 import gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json._
 import gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.validation.OTIMagicDrawValidation
+
+import org.junit._
+
 import play.api.libs.json._
 
 import scala.collection.JavaConversions._
@@ -86,7 +92,7 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 import scala.util.control.Exception._
 import scala.{Array, Boolean, Enumeration, Int, Long, None, Option, Some, StringContext, Unit}
-import scala.Predef.{ArrowAssoc, String, genericArrayOps}
+import scala.Predef.{classOf, ArrowAssoc, String, genericArrayOps}
 import scalaz._
 import Scalaz._
 
@@ -116,13 +122,22 @@ object ExecuteDynamicScriptAsMagicDrawUnitTest {
 
   def suite: Test = {
 
+    val t0 = SimpleMagicDrawTestSpec(
+      requiredPlugins=List("a"),
+      dynamicScriptFiles=List("f.dynamicScripts"),
+      projectLocation = None,
+      testScript = InvokeToolbarMenu(className="a.b", methodName="c"))
+
+    val t0spec = MagicDrawTestSpec.formats.writes(t0)
+    System.out.println(t0spec)
+
     val t1 = SimpleMagicDrawTestSpec(
       requiredPlugins=List("a"),
       dynamicScriptFiles=List("f.dynamicScripts"),
-      projectLocation = MagicDrawLocalProjectLocation(localProjectFile="tests/t1.mdzip"),
+      projectLocation = Some(MagicDrawLocalProjectLocation(localProjectFile="tests/t1.mdzip")),
       testScript = InvokeToolbarMenu(className="a.b", methodName="c"))
 
-    val t1spec = formatMagicDrawTestSpec.writes(t1)
+    val t1spec = MagicDrawTestSpec.formats.writes(t1)
     System.out.println(t1spec)
 
     val jsonFilter = new java.util.function.BiPredicate[Path, BasicFileAttributes] {
@@ -150,11 +165,14 @@ object ExecuteDynamicScriptAsMagicDrawUnitTest {
               case Failure(t) =>
                 System.out.println(t.getMessage)
                 None
+
               case Success(JsError(errors)) =>
-                System.out.println(
+                val message =
                   s"# Error: Failed to parse test specification:\nfile: $specPath\n"+
-                  errors.mkString("\n","\n","\n"))
+                  errors.mkString("\n","\n","\n")
+                Assert.fail(message)
                 None
+
               case Success(JsSuccess(info, _)) =>
                 Some(info)
             }
@@ -247,7 +265,10 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
 
     spec.projectLocation match {
 
-      case loc: MagicDrawLocalProjectLocation =>
+      case None =>
+        ()
+
+      case Some(loc: MagicDrawLocalProjectLocation) =>
         nonFatalCatch[Try[Project]]
           .withApply { (t: java.lang.Throwable) =>
             fail(t.getMessage)
@@ -267,7 +288,7 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
             }
           }
 
-      case loc: MagicDrawTeamworkProjectLocation =>
+      case Some(loc: MagicDrawTeamworkProjectLocation) =>
 
         import loc._
 
@@ -351,9 +372,13 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
 
     spec.projectLocation match {
 
-      case loc: MagicDrawLocalProjectLocation =>
+      case None =>
+        ()
 
-      case loc: MagicDrawTeamworkProjectLocation =>
+      case Some(loc: MagicDrawLocalProjectLocation) =>
+        ()
+
+      case Some(loc: MagicDrawTeamworkProjectLocation) =>
         if (!TeamworkUtils.logout)
           fail("Failed to logout from teamwork server: " + loc.server_connection_info)
         else {
@@ -372,15 +397,20 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
     val annotationManager = AnnotationManager.getInstance
     assertNotNull( annotationManager )
 
-    val p: Project = testProject.get
-
     val sm = SessionManager.getInstance
-    if ( sm.isSessionCreated( p ) )
-      sm.closeSession( p )
+
+    for {
+      p <- testProject
+    } yield {
+      if (sm.isSessionCreated(p))
+        sm.closeSession(p)
+
+      ()
+    }
 
     val ev: ActionEvent = null
 
-    val result = invokeDynamicScriptAction(p, ev)
+    val result = invokeDynamicScriptAction(testProject, ev)
 
     val t1 = System.currentTimeMillis
 
@@ -398,23 +428,26 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
 
     }
 
-
   }
 
   def invokeDynamicScriptAction
-  (p: Project,
+  (p: Option[Project],
    ev: ActionEvent)
   : Try[Option[MagicDrawValidationDataResults]]
   = spec.testScript match {
       case i: InvokeToolbarMenu =>
-        invokeToolbarMenuAction(p, ev, i)
+        invokeToolbarMenuAction(ev, i)
       case i: InvokeDiagramContextMenuActionForSelection =>
-        invokeDiagramContextMenuActionForSelection(p, ev, i)
+        p match {
+          case None =>
+            Failure(new java.lang.IllegalArgumentException(s"A DiagramContextMenuAction test requires a project"))
+          case Some(project) =>
+            invokeDiagramContextMenuActionForSelection(project, ev, i)
+        }
     }
 
   def invokeToolbarMenuAction
-  (p: Project,
-   ev: ActionEvent,
+  (ev: ActionEvent,
    i: InvokeToolbarMenu)
   : Try[Option[MagicDrawValidationDataResults]]
   = {
@@ -437,9 +470,49 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
       scripts.size == 1 )
 
     val script = scripts.head
-    val action = DynamicScriptsLaunchToolbarMenuAction( script, script.name.hname )
+    val ds = DynamicScriptsLaunchToolbarMenuAction( script, script.name.hname )
 
-    action.actionPerformed(ev)
+    // @todo
+    // Normally, it should be sufficient to invoke the MD DynamicScript action like this:
+    //
+    // ds.actionPerformed(ev)
+    //
+    // However, this reports errors using the MD Gui which is not available when there is no project opened.
+    // The workaround is to report the error as a test failure.
+
+    val previousTime = System.currentTimeMillis()
+    val message = ds.action.prettyPrint( "" ) + "\n"
+
+    ClassLoaderHelper.createDynamicScriptClassLoader( ds.action ) match {
+      case Failure(t) =>
+        throw new java.lang.AssertionError(
+          s"Failed to load dynamic script class $message\n${t.getMessage}", t)
+
+      case Success(scriptCL: URLClassLoader) => {
+        val localClassLoader = Thread.currentThread().getContextClassLoader
+        Thread.currentThread().setContextClassLoader(scriptCL)
+
+        try {
+          ClassLoaderHelper.lookupClassAndMethod(scriptCL, ds.action,
+            classOf[Project], classOf[ActionEvent], classOf[MainToolbarMenuAction]) match {
+            case Failure(t) =>
+              throw new java.lang.AssertionError(
+                s"Failed to lookup dynamic script class & method $message\n${t.getMessage}", t)
+
+            case Success(cm: ResolvedClassAndMethod) =>
+              ClassLoaderHelper.ignoreResultOrthrowFailure(
+                ClassLoaderHelper
+                  .invokeAndReport(previousTime, Application.getInstance().getProject, ev, cm)
+              )
+          }
+        }
+        finally {
+          Thread.currentThread().setContextClassLoader(localClassLoader)
+        }
+      }
+    }
+
+    System.out.println(s"Successfully invoked: ${ds.action}")
     Success(None)
   }
 

@@ -38,26 +38,11 @@
  */
 package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json
 
-import play.json.extra._
 import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import play.json.extra.Picklers._
 
 import scala.Predef.{ArrowAssoc, String}
 import scalaz.{@@, Tag}
 import OTIPrimitiveTypes._
-
-object OTISpecificationRootCharacteristics {
-
-  implicit val otiSpecificationRootCharacteristicsWrites
-  : Writes[OTISpecificationRootCharacteristics]
-  = Json.writes[OTISpecificationRootCharacteristics]
-
-  implicit val otiSpecificationRootCharacteristicsReads
-  : Reads[OTISpecificationRootCharacteristics]
-  = Json.reads[OTISpecificationRootCharacteristics]
-}
-
 
 case class OTISpecificationRootCharacteristics
 (packageURI: String @@ OTI_URI,
@@ -65,3 +50,11 @@ case class OTISpecificationRootCharacteristics
  artifactKind: OTIArtifactKind,
  nsPrefix: String @@ OTI_NS_PREFIX,
  uuidPrefix: String @@ OTI_UUID_PREFIX)
+
+object OTISpecificationRootCharacteristics {
+
+  implicit val formats
+  : Format[OTISpecificationRootCharacteristics]
+  = Json.format[OTISpecificationRootCharacteristics]
+
+}

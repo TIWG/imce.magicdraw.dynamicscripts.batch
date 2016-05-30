@@ -38,7 +38,11 @@
  */
 package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json
 
+import play.api.libs.json._
+import play.json.extra._
+
 import scala.collection.immutable._
+import scala.{None, Option, Some}
 import scala.Predef.String
 
 sealed abstract trait MagicDrawTestSpec {
@@ -48,20 +52,29 @@ sealed abstract trait MagicDrawTestSpec {
   def testName: String
   def dynamicScriptClass: String
   def dynamicScriptMethod: String
-  val projectLocation: MagicDrawProjectLocation
+  val projectLocation: Option[MagicDrawProjectLocation]
   val testScript: MagicDrawDynamicScript
+
+  def getProjectLocationTestName
+  : String
+  = projectLocation match {
+    case None =>
+      "No ProjectLocation"
+    case Some(loc) =>
+      loc.testName
+  }
 }
 
 case class SimpleMagicDrawTestSpec
 ( override val requiredPlugins: List[String],
   override val dynamicScriptFiles: List[String],
-  override val projectLocation: MagicDrawProjectLocation,
+  override val projectLocation: Option[MagicDrawProjectLocation],
   override val testScript: MagicDrawDynamicScript )
-extends MagicDrawTestSpec {
+  extends MagicDrawTestSpec {
 
   override def testName
   : String
-  = testScript.testName + " on " + projectLocation.testName
+  = testScript.testName + " on " + getProjectLocationTestName
 
   override def dynamicScriptClass
   : String
@@ -70,5 +83,13 @@ extends MagicDrawTestSpec {
   override def dynamicScriptMethod
   : String
   = testScript.methodName
+
+}
+
+object MagicDrawTestSpec {
+
+  implicit val formats
+  : Format[MagicDrawTestSpec]
+  = Variants.format[MagicDrawTestSpec]((__ \ "type").format[String])
 
 }

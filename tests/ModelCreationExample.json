@@ -1,0 +1,12 @@
+{
+  "requiredPlugins": ["gov.nasa.jpl.magicdraw.dynamicScripts"],
+  "dynamicScriptFiles": [
+    "dynamicScripts/imce.oti.mof.magicdraw.dynamicscripts/resources/oti.dynamicScripts"
+  ],
+  "testScript": {
+    "className":"imce.oti.mof.magicdraw.dynamicscripts.tiwg.examples.ModelCreationExample",
+    "methodName":"example",
+    "type":"InvokeToolbarMenu"},
+
+  "type": "SimpleMagicDrawTestSpec"
+}

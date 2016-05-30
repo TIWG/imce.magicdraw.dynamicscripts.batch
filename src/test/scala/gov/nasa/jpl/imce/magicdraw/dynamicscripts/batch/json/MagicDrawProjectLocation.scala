@@ -38,8 +38,10 @@
  */
 package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json
 
+import play.api.libs.json._
+
 import scala.Int
-import scala.Predef.String
+import scala.Predef.{ArrowAssoc, String}
 
 sealed abstract trait MagicDrawProjectLocation {
 
@@ -52,6 +54,14 @@ case class MagicDrawLocalProjectLocation
   extends MagicDrawProjectLocation {
 
   override def testName: String = localProjectFile
+
+}
+
+object MagicDrawLocalProjectLocation {
+
+  implicit val formats
+  : Format[MagicDrawLocalProjectLocation]
+  = Json.format[MagicDrawLocalProjectLocation]
 
 }
 
@@ -74,5 +84,47 @@ case class MagicDrawTeamworkProjectLocation
   val server_connection_info = "md://"+teamworkUser+"@"+teamworkServer+":"+teamworkPort+"/'"+teamworkProjectPath+"'"
 
   override def testName: String = teamworkProjectPath
+
+}
+
+object MagicDrawTeamworkProjectLocation {
+
+  implicit val formats
+  : Format[MagicDrawTeamworkProjectLocation]
+  = Json.format[MagicDrawTeamworkProjectLocation]
+
+}
+
+object MagicDrawProjectLocation {
+
+  // https://github.com/playframework/playframework/issues/6131
+  implicit val formats
+  : Format[MagicDrawProjectLocation]
+  = {
+
+    val writes
+    : Writes[MagicDrawProjectLocation]
+    = Writes[MagicDrawProjectLocation] {
+      case m: MagicDrawLocalProjectLocation =>
+        Json.toJson(m)(MagicDrawLocalProjectLocation.formats).as[JsObject] +
+          ("type" -> JsString("MagicDrawLocalProjectLocation"))
+      case m: MagicDrawTeamworkProjectLocation =>
+        Json.toJson(m)(MagicDrawTeamworkProjectLocation.formats).as[JsObject] +
+          ("type" -> JsString("MagicDrawTeamworkProjectLocation"))
+    }
+
+    val reads
+    : Reads[MagicDrawProjectLocation]
+    = Reads[MagicDrawProjectLocation] { json =>
+      (json \ "type").validate[String].flatMap {
+        case "MagicDrawLocalProjectLocation" =>
+          Json.fromJson(json)(MagicDrawLocalProjectLocation.formats)
+        case "MagicDrawTeamworkProjectLocation" =>
+          Json.fromJson(json)(MagicDrawTeamworkProjectLocation.formats)
+      }
+    }
+
+    Format(reads,writes)
+  }
 
 }

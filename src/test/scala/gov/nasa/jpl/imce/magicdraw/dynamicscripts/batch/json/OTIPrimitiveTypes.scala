@@ -38,11 +38,6 @@
  */
 package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json
 
-import play.json.extra._
-import play.api.libs.json._
-import play.api.libs.functional.syntax._
-import play.json.extra.Picklers._
-
 import scala.Predef.String
 import scalaz.{@@,\&/,Tag}
 

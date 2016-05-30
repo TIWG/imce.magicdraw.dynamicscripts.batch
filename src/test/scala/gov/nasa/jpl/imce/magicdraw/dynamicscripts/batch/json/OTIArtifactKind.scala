@@ -38,6 +38,10 @@
  */
 package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json
 
+import play.api.libs.json._
+import play.json.extra._
+import scala.Predef.String
+
 /**
   * A UML Package can be the root of an OTI artifact of some kind.
   * OTI artifact kinds impose well-formedness constraints on
@@ -136,3 +140,11 @@ case object OTIBuiltInModelLibraryArtifactKind
   extends OTIArtifactKind
     with OTIBuiltInArtifactKind
     with OTIModelLibraryArtifactKind
+
+object OTIArtifactKind {
+
+  implicit val formats
+  : Format[OTIArtifactKind]
+  = Variants.format[OTIArtifactKind]((__ \ "type").format[String])
+
+}
