@@ -149,9 +149,6 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     resolvers += "Sonatype releases" at "https://oss.sonatype.org/content/repositories/releases",
 
-    // https://github.com/aparo/play-json-extra
-    libraryDependencies += "io.megl" %% "play-json-extra" % "2.4.3",
-
     mdJVMFlags := Seq(), //
     // for debugging: Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"),
 
