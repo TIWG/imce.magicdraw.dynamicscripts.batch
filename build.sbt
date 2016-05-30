@@ -100,8 +100,6 @@ lazy val mdRoot = SettingKey[File]("md-root", "MagicDraw Installation Directory"
 
 lazy val specsRoot = SettingKey[File]("specs-root", "MagicDraw DynamicScripts Test Specification Directory")
 
-lazy val runMDTests = taskKey[Unit]("Run MagicDraw DynamicScripts Unit Tests")
-
 lazy val mdJVMFlags = SettingKey[Seq[String]]("md-jvm-flags", "Extra JVM flags for running MD (e.g., debugging)")
 
 lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
@@ -111,7 +109,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
   .settings(IMCEPlugin.strictScalacFatalWarningsSettings)
   // enable when JPL has a Nexus Pro configured with a cache of published javadoc html pages.
   //.settings(docSettings(diagrams=false))
-  .settings(IMCEReleasePlugin.packageReleaseProcessSettings)
+  .settings(IMCEReleasePlugin.packageReleaseProcessSettings )
   .settings(
     IMCEKeys.licenseYearOrRange := "2014-2016",
     IMCEKeys.organizationInfo := IMCEPlugin.Organizations.oti,
@@ -133,9 +131,6 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     git.baseVersion := Versions.version,
 
-    resourceDirectory in Compile :=
-      baseDirectory.value / "resources",
-
     // disable publishing the jar produced by `test:package`
     publishArtifact in(Test, packageBin) := false,
 
@@ -154,88 +149,18 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     mdRoot := baseDirectory.value / "target" / "md.package",
 
-    specsRoot := baseDirectory.value / "tests",
-
-    runMDTests <<= (mdRoot, specsRoot, mdJVMFlags, javaHome, classDirectory in Compile, streams) map {
-      (md_install_dir, tests_dir, jvmFlags, jHome, class_dir, s) =>
-
-        s.log.info(s"# md.install.dir=$md_install_dir")
-        s.log.info(s"# test specs.dir=$tests_dir")
-
-        val weaverJar: File = {
-          val weaverJars = ((md_install_dir / "lib" / "aspectj") * "aspectjweaver-*.jar").get
-          require(1 == weaverJars.size)
-          weaverJars.head
-        }
-
-        val rtJar: File = {
-          val rtJars = ((md_install_dir / "lib" / "aspectj") * "aspectjrt-*.jar").get
-          require(1 == rtJars.size)
-          rtJars.head
-        }
-
-        val scalaLib: File = {
-          val scalaLibs = ((md_install_dir / "lib" / "scala") * "scala-library-*.jar").get
-          require(1 == scalaLibs.size)
-          scalaLibs.head
-        }
-
-        val xalanLib: File = {
-          val lib = md_install_dir / "lib" / "xalan.jar"
-          require(lib.exists)
-          lib
-        }
-
-        val patchJar: File = {
-          val lib = md_install_dir / "lib" / "patch.jar"
-          require(lib.exists)
-          lib
-        }
-        val libJars =
-          (patchJar +: ((md_install_dir / "lib") ** "*.jar").get.filterNot(_ == patchJar).sorted)
-            .mkString(File.pathSeparator)
-
-        val classpath = class_dir + File.pathSeparator + libJars
-
-        val cp = classpath.replaceAllLiterally(md_install_dir.toString, "<md.root>")
-
-        s.log.info(s"# CLASSPATH: ${cp.split(File.pathSeparator).mkString("\n","\n","\n")}")
-        s.log.info(s"# CLASSPATH: $cp")
-
-        val options = ForkOptions(
-          bootJars = Seq(weaverJar, rtJar, scalaLib, xalanLib),
-          javaHome = jHome,
-          outputStrategy = Some(StdoutOutput),
-          workingDirectory = Some(md_install_dir),
-          runJVMOptions = Seq(
-            "-classpath", classpath
-          ) ++ jvmFlags,
-          envVars = Map(
-            "FL_FORCE_USAGE" -> "true",
-            "FL_SERVER_ADDRESS" -> "cae-lic01.jpl.nasa.gov",
-            "FL_SERVER_PORT" -> "1101",
-            "FL_EDITION" -> "enterprise",
-            "DYNAMIC_SCRIPTS_TESTS_DIR" -> tests_dir.getAbsolutePath)
-        )
-
-        val arguments: Seq[String] = Seq(
-          "gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.ExecuteDynamicScriptAsMagicDrawUnitTest"
-        )
-
-        val mainClass: String = "org.junit.runner.JUnitCore"
-
-        val exitCode = Fork.java(options, mainClass +: arguments)
-        s.log.info(s"exit: $exitCode")
-    },
+    specsRoot := baseDirectory.value / "resources" / "tests",
 
     parallelExecution in Test := false,
 
     fork in Test := true,
 
+    testGrouping in Test <<= testGrouping in Test dependsOn packagedArtifacts,
+
     testGrouping in Test <<=
       ( testGrouping in Test,
         mdRoot,
-        specsRoot,
+        packagedArtifacts,
         mdJVMFlags,
         javaHome,
         classDirectory in Compile,
@@ -245,7 +170,20 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
         envVars,
         streams ) map {
 
-        (original, md_install_dir, tests_dir, jvmFlags, jHome, class_dir, cInput, outputS, jOpts, env, s) =>
+        (original, md_install_dir, pas, jvmFlags, jHome, class_dir, cInput, outputS, jOpts, env, s) =>
+
+          val ds_dir = md_install_dir / "dynamicScripts"
+
+          pas
+            .filter { case (a, f) => a.`type` == "zip" }
+            .foreach { case (a, f) =>
+              val files = IO.unzip(f, ds_dir)
+              s.log.info(
+                s"=> Installed ${files.size} " +
+                  s"files extracted from zip: $a")
+            }
+
+          val tests_dir = ds_dir / "imce.magicdraw.dynamicscripts.batch" / "resources" / "tests"
 
           val weaverJar: File = {
             val weaverJars = ((md_install_dir / "lib" / "aspectj") * "aspectjweaver-*.jar").get
@@ -450,23 +388,15 @@ def dynamicScriptsResourceSettings(dynamicScriptsProjectName: Option[String] = N
       packageSrc in Test,
       packageDoc in Test,
       streams) map {
-      (base, bin, src, doc, binT, srcT, docT, s) =>
-        val dir = base / "svn" / "org.omg.oti.magicdraw"
-        val file2name = (dir ** "*.dynamicScripts").pair(relativeTo(dir)) ++
-          (dir ** "*.mdzip").pair(relativeTo(dir)) ++
+      (dir, bin, src, doc, binT, srcT, docT, s) =>
+          ((dir --- dir / "target") ** "*.md").pair(relativeTo(dir)) ++
           com.typesafe.sbt.packager.MappingsHelper.directory(dir / "resources") ++
-          com.typesafe.sbt.packager.MappingsHelper.directory(dir / "profiles") ++
           addIfExists(bin, "lib/" + bin.name) ++
           addIfExists(binT, "lib/" + binT.name) ++
           addIfExists(src, "lib.sources/" + src.name) ++
           addIfExists(srcT, "lib.sources/" + srcT.name) ++
           addIfExists(doc, "lib.javadoc/" + doc.name) ++
           addIfExists(docT, "lib.javadoc/" + docT.name)
-
-        s.log.info(s"file2name entries: ${file2name.size}")
-        s.log.info(file2name.mkString("\n"))
-
-        file2name
     },
 
     artifacts <+= (name in Universal) { n => Artifact(n, "zip", "zip", Some("resource"), Seq(), None, Map()) },
