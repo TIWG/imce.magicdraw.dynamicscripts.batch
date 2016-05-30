@@ -296,12 +296,12 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
 
         val secure = true
 
-        /**
-          * Questions for NoMagic:
-          *
-          * 1) TeamworkUtils.authenticate seems redundant with TeamworkUtils.loginWithSession
-          * However, authenticate() includes the secure boolean flag whereas loginWithSession() doesn't.
-          */
+        /*
+         * Questions for NoMagic:
+         *
+         * 1) TeamworkUtils.authenticate seems redundant with TeamworkUtils.loginWithSession
+         * However, authenticate() includes the secure boolean flag whereas loginWithSession() doesn't.
+         */
         if (! TeamworkUtils.authenticate( teamworkServer, teamworkPort, secure, teamworkUser, teamworkPassword ))
           fail("Cannot authenticate "+server_connection_info )
 
@@ -310,13 +310,13 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
             step+") successfully authenticated for " + server_connection_info)
 
 
-          /**
-            * Questions for NoMagic:
-            *
-            * 2) TeamworkUtils.loginWithSession returns a com.nomagic.teamwork.common.users.SessionInfo
-            * There is no MD OpenAPI info about SessionInfo.
-            * What should we do with it, if anything?
-            */
+          /*
+           * Questions for NoMagic:
+           *
+           * 2) TeamworkUtils.loginWithSession returns a com.nomagic.teamwork.common.users.SessionInfo
+           * There is no MD OpenAPI info about SessionInfo.
+           * What should we do with it, if anything?
+           */
           Option
             .apply(TeamworkUtils.loginWithSession(teamworkServer, teamworkPort, teamworkUser, teamworkPassword)) match {
             case None =>
@@ -360,14 +360,14 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
   override def tearDownTest(): Unit = {
     val t0 = System.currentTimeMillis
 
-    /**
-      * Question for NoMagic:
-      *
-      * 3) permission to use this method for unit testing.
-      * As the name suggest, we'd prefer to make sure MD closes the teamwork project without
-      * attempting any kind of update (if something has been modified) or without any consideration
-      * for any unsaved changed (if any such change has been made)
-      */
+    /*
+     * Question for NoMagic:
+     *
+     * 3) permission to use this method for unit testing.
+     * As the name suggest, we'd prefer to make sure MD closes the teamwork project without
+     * attempting any kind of update (if something has been modified) or without any consideration
+     * for any unsaved changed (if any such change has been made)
+     */
     closeProjectNoSave(pManager)
 
     spec.projectLocation match {

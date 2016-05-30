@@ -109,7 +109,8 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
   .enablePlugins(IMCEReleasePlugin)
   .settings(dynamicScriptsResourceSettings(Some("imce.magicdraw.dynamicscripts.batch")))
   .settings(IMCEPlugin.strictScalacFatalWarningsSettings)
-  .settings(docSettings(diagrams=false))
+  // enable when JPL has a Nexus Pro configured with a cache of published javadoc html pages.
+  //.settings(docSettings(diagrams=false))
   .settings(IMCEReleasePlugin.packageReleaseProcessSettings)
   .settings(
     IMCEKeys.licenseYearOrRange := "2014-2016",
