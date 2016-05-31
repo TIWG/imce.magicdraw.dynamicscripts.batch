@@ -274,15 +274,27 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
             fail(t.getMessage)
           }
           .apply {
+            val installRoot = Paths.get(MDUML.getInstallRoot)
+            val localProjectPath = Paths.get(loc.localProjectFile)
+            val localProjectAbsoluteFile =
+              if (localProjectPath.isAbsolute)
+                localProjectPath.toString
+              else {
+                val resolvedProjectPath = installRoot.resolve(localProjectPath)
+                require(resolvedProjectPath.isAbsolute)
+                resolvedProjectPath.toString
+              }
+
             val t0 = System.currentTimeMillis
-            Option.apply(super.openProject(loc.localProjectFile)) match {
+            System.out.println(step+") opening local project: " + localProjectAbsoluteFile)
+            Option.apply(super.openProject(localProjectAbsoluteFile)) match {
               case None =>
-                fail("Failed to open local project: " + loc.localProjectFile)
+                fail("Failed to open local project: " + localProjectAbsoluteFile)
 
               case Some(p) =>
                 val t1 = System.currentTimeMillis
                 System.out.println(
-                  step+") successfully opened local project: " + loc.localProjectFile +
+                  step+") successfully opened local project: " + localProjectAbsoluteFile +
                   " in " + prettyDurationFromTo(t0, t1))
                 testProject = Some(p)
             }
