@@ -92,7 +92,7 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 import scala.util.control.Exception._
 import scala.{Array, Boolean, Enumeration, Int, Long, None, Option, Some, StringContext, Unit}
-import scala.Predef.{classOf, ArrowAssoc, String, genericArrayOps}
+import scala.Predef.{classOf, require, ArrowAssoc, String, genericArrayOps}
 import scalaz._
 import Scalaz._
 
