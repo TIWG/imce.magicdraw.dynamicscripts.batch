@@ -234,6 +234,7 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
       } yield dsFile.toFile.getAbsolutePath
     }
 
+
   override def setUpTest(): Unit = {
     super.setUpTest()
 
@@ -285,26 +286,12 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
                 resolvedProjectPath.toString
               }
 
-            val t0 = System.currentTimeMillis
-            System.out.println(step+") opening local project: " + localProjectAbsoluteFile)
-            Option.apply(super.openProject(localProjectAbsoluteFile)) match {
-              case None =>
-                fail("Failed to open local project: " + localProjectAbsoluteFile)
-
-              case Some(p) =>
-                val t1 = System.currentTimeMillis
-                System.out.println(
-                  step+") successfully opened local project: " + localProjectAbsoluteFile +
-                  " in " + prettyDurationFromTo(t0, t1))
-                testProject = Some(p)
-            }
+            testProject = Some(loadLocalProject(localProjectAbsoluteFile))
           }
 
       case Some(loc: MagicDrawTeamworkProjectLocation) =>
 
         import loc._
-
-        val t0 = System.currentTimeMillis
 
         val secure = true
 
@@ -347,25 +334,51 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
                   System.out.println(
                     step+") successfully retrieved the descriptor for: " + server_connection_info)
 
-                  val a = Application.getInstance
-                  val pManager: ProjectsManager = a.getProjectsManager
-                  val silent = true
-                  pManager.loadProject(pDescriptor, silent)
-
-                  Option.apply(a.getProject) match {
-                    case None =>
-                      fail("Failed to load project: " + server_connection_info)
-
-                    case Some(p) =>
-                      val t1 = System.currentTimeMillis
-                      System.out.println(
-                        step+") successfully opened teamwork project: " + server_connection_info + " in " +
-                          prettyDurationFromTo(t0, t1))
-                      testProject = Some(p)
-                  }
+                  testProject = Some(loadTeamworkProject(server_connection_info, pDescriptor))
                 }
           }
         }
+    }
+  }
+
+  def loadTeamworkProject(server_connection_info: String, descriptor: ProjectDescriptor)
+  : Project
+  = {
+    val t0 = System.currentTimeMillis
+
+    val a = Application.getInstance
+    val pManager: ProjectsManager = a.getProjectsManager
+    val silent = true
+    pManager.loadProject(descriptor, silent)
+
+    Option.apply(a.getProject) match {
+      case None =>
+        throw new java.lang.IllegalArgumentException("Failed to load project: " + server_connection_info)
+
+      case Some(p) =>
+        val t1 = System.currentTimeMillis
+        System.out.println(
+          step + ") successfully opened teamwork project: " + server_connection_info + " in " +
+            prettyDurationFromTo(t0, t1))
+        p
+    }
+  }
+
+  def loadLocalProject(absoluteFile: String)
+  : Project
+  = {
+    val t0 = System.currentTimeMillis
+    System.out.println(step + ") opening local project: " + absoluteFile)
+    Option.apply(super.openProject(absoluteFile)) match {
+      case None =>
+        throw new java.lang.IllegalArgumentException("Failed to open local project: " + absoluteFile)
+
+      case Some(p) =>
+        val t1 = System.currentTimeMillis
+        System.out.println(
+          step + ") successfully opened local project: " + absoluteFile +
+            " in " + prettyDurationFromTo(t0, t1))
+        p
     }
   }
 
