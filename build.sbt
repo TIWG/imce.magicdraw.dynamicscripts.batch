@@ -192,62 +192,81 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
             s"=> Installed ${files.size} " +
               s"files extracted from zip: $pas")
 
-
           val tests_dir = ds_dir / "imce.magicdraw.dynamicscripts.batch" / "resources" / "tests"
 
-          val weaverJar: File = {
-            val weaverJars = ((md_install_dir / "lib" / "aspectj") * "aspectjweaver-*.jar").get
-            require(1 == weaverJars.size)
-            weaverJars.head
-          }
+          val mdProperties = new java.util.Properties()
+          IO.load(mdProperties, md_install_dir / "bin" / "magicdraw.properties")
 
-          val rtJar: File = {
-            val rtJars = ((md_install_dir / "lib" / "aspectj") * "aspectjrt-*.jar").get
-            require(1 == rtJars.size)
-            rtJars.head
-          }
+          val mdBoot =
+            mdProperties
+              .getProperty("BOOT_CLASSPATH")
+              .split(":")
+              .map(md_install_dir / _)
+              .toSeq
+          s.log.info(s"# MD BOOT CLASSPATH: ${mdBoot.mkString("\n","\n","\n")}")
 
-          val scalaLib: File = {
-            val scalaLibs = ((md_install_dir / "lib" / "scala") * "scala-library-*.jar").get
-            require(1 == scalaLibs.size)
-            scalaLibs.head
-          }
+          val mdClasspath =
+            mdProperties
+              .getProperty("CLASSPATH")
+              .split(":")
+              .map(md_install_dir / _)
+              .toSeq
+          s.log.info(s"# MD CLASSPATH: ${mdClasspath.mkString("\n","\n","\n")}")
 
-          val xalanLib: File = {
-            val lib = md_install_dir / "lib" / "xalan.jar"
-            require(lib.exists)
-            lib
-          }
+          val imceSetupProperties = IO.readLines(md_install_dir / "bin" / "magicdraw.imce.setup.sh")
 
-          val patchJar: File = {
-            val lib = md_install_dir / "lib" / "patch.jar"
-            require(lib.exists)
-            lib
-          }
-          val libJars =
-            (patchJar +: ((md_install_dir / "lib") ** "*.jar").get.filterNot(_ == patchJar).sorted)
-              .mkString(File.pathSeparator)
+          val imceBoot =
+            imceSetupProperties
+              .find(_.startsWith("IMCE_BOOT_CLASSPATH_PREFIX"))
+              .getOrElse("")
+              .stripPrefix("IMCE_BOOT_CLASSPATH_PREFIX=\"")
+              .stripSuffix("\"")
+              .split("\\\\+:")
+              .map(md_install_dir / _)
+              .toSeq
+          s.log.info(s"# IMCE BOOT: ${imceBoot.mkString("\n","\n","\n")}")
 
-          val classpath = class_dir + File.pathSeparator + libJars
+          val imcePrefix =
+            imceSetupProperties
+              .find(_.startsWith("IMCE_CLASSPATH_PREFIX"))
+              .getOrElse("")
+              .stripPrefix("IMCE_CLASSPATH_PREFIX=\"")
+              .stripSuffix("\"")
+              .split("\\\\+:")
+              .map(md_install_dir / _)
+              .toSeq
+          s.log.info(s"# IMCE CLASSPATH Prefix: ${imcePrefix.mkString("\n","\n","\n")}")
 
           original.map { group =>
 
+            s.log.info(s"# ${env.size} env properties")
             env.keySet.toList.sorted.foreach { k =>
               s.log.info(s"env[$k]=${env.get(k)}")
             }
+            s.log.info(s"# ------")
 
-            s.log.info(s"${jOpts.size} jOpts:\n"+jOpts.mkString("\n"))
+            s.log.info(s"# ${jOpts.size} java options")
+            s.log.info(jOpts.mkString("\n"))
+            s.log.info(s"# ------")
+
+            s.log.info(s"# ${jvmFlags.size} jvm flags")
+            s.log.info(jvmFlags.mkString("\n"))
+            s.log.info(s"# ------")
 
             val forkOptions = ForkOptions(
-              bootJars = Seq(weaverJar, rtJar, scalaLib, xalanLib),
+              bootJars = imceBoot ++ mdBoot,
               javaHome = jHome,
               connectInput = cInput,
               outputStrategy = outputS,
               runJVMOptions = jOpts ++ Seq(
-                "-classpath", classpath
+                "-classpath", (imcePrefix ++ mdClasspath).mkString(File.pathSeparator),
+                "-DLOCALCONFIG=false",
+                "-DWINCONFIG=false",
+                "-DHOME="+md_install_dir.getAbsolutePath
               ) ++ jvmFlags,
               workingDirectory = Some(md_install_dir),
               envVars = env +
+                ("debug.dir" -> md_install_dir.getAbsolutePath) +
                 ("FL_FORCE_USAGE" -> "true") +
                 ("FL_SERVER_ADDRESS" -> "cae-lic01.jpl.nasa.gov") +
                 ("FL_SERVER_PORT" -> "1101") +
