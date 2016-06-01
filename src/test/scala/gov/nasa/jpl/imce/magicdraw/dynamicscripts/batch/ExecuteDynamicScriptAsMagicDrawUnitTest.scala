@@ -270,7 +270,7 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
         ()
 
       case Some(loc: MagicDrawLocalProjectLocation) =>
-        nonFatalCatch[Try[Project]]
+        nonFatalCatch[Unit]
           .withApply { (t: java.lang.Throwable) =>
             fail(t.getMessage)
           }
@@ -325,7 +325,7 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
               System.out.println(
                 step+") successful server login for: " + server_connection_info)
 
-              nonFatalCatch[Try[Project]]
+              nonFatalCatch[Unit]
                 .withApply { (t: java.lang.Throwable) =>
                   fail(t.getMessage)
                 }
