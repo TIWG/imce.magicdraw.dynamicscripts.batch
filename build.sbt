@@ -98,6 +98,10 @@ shellPrompt in ThisBuild := { state => Project.extract(state).currentRef.project
 
 lazy val mdRoot = SettingKey[File]("md-root", "MagicDraw Installation Directory")
 
+lazy val testsResultDir = SettingKey[File]("tests-result-dir", "Directory for the tests results to archive as the test resource artifact")
+
+lazy val testsResultsSetupTask = taskKey[Unit]("Create the tests results directory")
+
 lazy val specsRoot = SettingKey[File]("specs-root", "MagicDraw DynamicScripts Test Specification Directory")
 
 lazy val mdJVMFlags = SettingKey[Seq[String]]("md-jvm-flags", "Extra JVM flags for running MD (e.g., debugging)")
@@ -159,126 +163,148 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     resolvers += "Sonatype releases" at "https://oss.sonatype.org/content/repositories/releases",
 
-    mdJVMFlags := Seq(), //
+    mdJVMFlags := Seq("-Xmx8G"), //
     // for debugging: Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"),
 
     mdRoot := baseDirectory.value / "target" / "md.package",
 
+    testsResultDir := baseDirectory.value / "target" / "md.testResults",
+
     specsRoot := baseDirectory.value / "resources" / "tests",
+
+    testsResultsSetupTask := {
+
+      val s = streams.value
+
+      // Wipe any existing tests results directory and create a fresh one
+      val resultsDir = testsResultDir.value
+      if (resultsDir.exists) {
+        s.log.info(s"# Deleting existing results directory: $resultsDir")
+        IO.delete(resultsDir)
+      }
+      s.log.info(s"# Creating results directory: $resultsDir")
+      IO.createDirectory(resultsDir)
+      require(
+        resultsDir.exists && resultsDir.canWrite,
+        s"The created results directory should exist and be writeable: $resultsDir")
+
+    },
+
+    test in Test <<= (test in Test) dependsOn testsResultsSetupTask,
 
     parallelExecution in Test := false,
 
     fork in Test := true,
 
-    testGrouping in Test <<=
-      ( testGrouping in Test,
-        mdRoot,
-        packageBin in Universal,
-        mdJVMFlags,
-        javaHome,
-        classDirectory in Compile,
-        connectInput,
-        outputStrategy,
-        javaOptions,
-        envVars,
-        streams ) map {
+    testGrouping in Test := {
+      val original = (testGrouping in Test).value
+      val md_install_dir = mdRoot.value
+      val tests_results_dir = testsResultDir.value
+      val pas = (packageBin in Universal).value
+      val jvmFlags = mdJVMFlags.value
+      val jHome = javaHome.value
+      val class_dir = (classDirectory in Compile).value
+      val cInput = connectInput.value
+      val outputS = outputStrategy.value
+      val jOpts = javaOptions.value
+      val env = envVars.value
+      val s = streams.value
 
-        (original, md_install_dir, pas, jvmFlags, jHome, class_dir, cInput, outputS, jOpts, env, s) =>
+      val ds_dir = md_install_dir / "dynamicScripts"
 
-          val ds_dir = md_install_dir / "dynamicScripts"
+      val files = IO.unzip(pas, ds_dir)
+      s.log.info(
+        s"=> Installed ${files.size} " +
+          s"files extracted from zip: $pas")
 
-          val files = IO.unzip(pas, ds_dir)
-          s.log.info(
-            s"=> Installed ${files.size} " +
-              s"files extracted from zip: $pas")
+      val tests_dir = ds_dir / "imce.magicdraw.dynamicscripts.batch" / "resources" / "tests"
 
-          val tests_dir = ds_dir / "imce.magicdraw.dynamicscripts.batch" / "resources" / "tests"
+      val mdProperties = new java.util.Properties()
+      IO.load(mdProperties, md_install_dir / "bin" / "magicdraw.properties")
 
-          val mdProperties = new java.util.Properties()
-          IO.load(mdProperties, md_install_dir / "bin" / "magicdraw.properties")
+      val mdBoot =
+        mdProperties
+          .getProperty("BOOT_CLASSPATH")
+          .split(":")
+          .map(md_install_dir / _)
+          .toSeq
+      s.log.info(s"# MD BOOT CLASSPATH: ${mdBoot.mkString("\n", "\n", "\n")}")
 
-          val mdBoot =
-            mdProperties
-              .getProperty("BOOT_CLASSPATH")
-              .split(":")
-              .map(md_install_dir / _)
-              .toSeq
-          s.log.info(s"# MD BOOT CLASSPATH: ${mdBoot.mkString("\n","\n","\n")}")
+      val mdClasspath =
+        mdProperties
+          .getProperty("CLASSPATH")
+          .split(":")
+          .map(md_install_dir / _)
+          .toSeq
+      s.log.info(s"# MD CLASSPATH: ${mdClasspath.mkString("\n", "\n", "\n")}")
 
-          val mdClasspath =
-            mdProperties
-              .getProperty("CLASSPATH")
-              .split(":")
-              .map(md_install_dir / _)
-              .toSeq
-          s.log.info(s"# MD CLASSPATH: ${mdClasspath.mkString("\n","\n","\n")}")
+      val imceSetupProperties = IO.readLines(md_install_dir / "bin" / "magicdraw.imce.setup.sh")
 
-          val imceSetupProperties = IO.readLines(md_install_dir / "bin" / "magicdraw.imce.setup.sh")
+      val imceBoot =
+        imceSetupProperties
+          .find(_.startsWith("IMCE_BOOT_CLASSPATH_PREFIX"))
+          .getOrElse("")
+          .stripPrefix("IMCE_BOOT_CLASSPATH_PREFIX=\"")
+          .stripSuffix("\"")
+          .split("\\\\+:")
+          .map(md_install_dir / _)
+          .toSeq
+      s.log.info(s"# IMCE BOOT: ${imceBoot.mkString("\n", "\n", "\n")}")
 
-          val imceBoot =
-            imceSetupProperties
-              .find(_.startsWith("IMCE_BOOT_CLASSPATH_PREFIX"))
-              .getOrElse("")
-              .stripPrefix("IMCE_BOOT_CLASSPATH_PREFIX=\"")
-              .stripSuffix("\"")
-              .split("\\\\+:")
-              .map(md_install_dir / _)
-              .toSeq
-          s.log.info(s"# IMCE BOOT: ${imceBoot.mkString("\n","\n","\n")}")
+      val imcePrefix =
+        imceSetupProperties
+          .find(_.startsWith("IMCE_CLASSPATH_PREFIX"))
+          .getOrElse("")
+          .stripPrefix("IMCE_CLASSPATH_PREFIX=\"")
+          .stripSuffix("\"")
+          .split("\\\\+:")
+          .map(md_install_dir / _)
+          .toSeq
+      s.log.info(s"# IMCE CLASSPATH Prefix: ${imcePrefix.mkString("\n", "\n", "\n")}")
 
-          val imcePrefix =
-            imceSetupProperties
-              .find(_.startsWith("IMCE_CLASSPATH_PREFIX"))
-              .getOrElse("")
-              .stripPrefix("IMCE_CLASSPATH_PREFIX=\"")
-              .stripSuffix("\"")
-              .split("\\\\+:")
-              .map(md_install_dir / _)
-              .toSeq
-          s.log.info(s"# IMCE CLASSPATH Prefix: ${imcePrefix.mkString("\n","\n","\n")}")
+      original.map { group =>
 
-          original.map { group =>
+        s.log.info(s"# ${env.size} env properties")
+        env.keySet.toList.sorted.foreach { k =>
+          s.log.info(s"env[$k]=${env.get(k)}")
+        }
+        s.log.info(s"# ------")
 
-            s.log.info(s"# ${env.size} env properties")
-            env.keySet.toList.sorted.foreach { k =>
-              s.log.info(s"env[$k]=${env.get(k)}")
-            }
-            s.log.info(s"# ------")
+        s.log.info(s"# ${jOpts.size} java options")
+        s.log.info(jOpts.mkString("\n"))
+        s.log.info(s"# ------")
 
-            s.log.info(s"# ${jOpts.size} java options")
-            s.log.info(jOpts.mkString("\n"))
-            s.log.info(s"# ------")
+        s.log.info(s"# ${jvmFlags.size} jvm flags")
+        s.log.info(jvmFlags.mkString("\n"))
+        s.log.info(s"# ------")
 
-            s.log.info(s"# ${jvmFlags.size} jvm flags")
-            s.log.info(jvmFlags.mkString("\n"))
-            s.log.info(s"# ------")
+        val forkOptions = ForkOptions(
+          bootJars = imceBoot ++ mdBoot,
+          javaHome = jHome,
+          connectInput = cInput,
+          outputStrategy = outputS,
+          runJVMOptions = jOpts ++ Seq(
+            "-classpath", (imcePrefix ++ mdClasspath).mkString(File.pathSeparator),
+            "-DLOCALCONFIG=false",
+            "-DWINCONFIG=false",
+            "-DHOME=" + md_install_dir.getAbsolutePath
+          ) ++ jvmFlags,
+          workingDirectory = Some(md_install_dir),
+          envVars = env +
+            ("debug.dir" -> md_install_dir.getAbsolutePath) +
+            ("FL_FORCE_USAGE" -> "true") +
+            ("FL_SERVER_ADDRESS" -> "cae-lic01.jpl.nasa.gov") +
+            ("FL_SERVER_PORT" -> "1101") +
+            ("FL_EDITION" -> "enterprise") +
+            ("DYNAMIC_SCRIPTS_TESTS_DIR" -> tests_dir.getAbsolutePath) +
+            ("DYNAMIC_SCRIPTS_RESULTS_DIR" -> tests_results_dir.getAbsolutePath)
+        )
 
-            val forkOptions = ForkOptions(
-              bootJars = imceBoot ++ mdBoot,
-              javaHome = jHome,
-              connectInput = cInput,
-              outputStrategy = outputS,
-              runJVMOptions = jOpts ++ Seq(
-                "-classpath", (imcePrefix ++ mdClasspath).mkString(File.pathSeparator),
-                "-DLOCALCONFIG=false",
-                "-DWINCONFIG=false",
-                "-DHOME="+md_install_dir.getAbsolutePath
-              ) ++ jvmFlags,
-              workingDirectory = Some(md_install_dir),
-              envVars = env +
-                ("debug.dir" -> md_install_dir.getAbsolutePath) +
-                ("FL_FORCE_USAGE" -> "true") +
-                ("FL_SERVER_ADDRESS" -> "cae-lic01.jpl.nasa.gov") +
-                ("FL_SERVER_PORT" -> "1101") +
-                ("FL_EDITION" -> "enterprise") +
-                ("DYNAMIC_SCRIPTS_TESTS_DIR" -> tests_dir.getAbsolutePath)
-            )
+        s.log.info(s"# working directory: $md_install_dir")
 
-            s.log.info(s"# working directory: $md_install_dir")
-
-            group.copy(runPolicy = Tests.SubProcess(forkOptions))
-          }
+        group.copy(runPolicy = Tests.SubProcess(forkOptions))
       }
+    }
   )
   .dependsOnSourceProjectOrLibraryArtifacts(
     "imce-oti-mof-magicdraw-dynamicscripts",

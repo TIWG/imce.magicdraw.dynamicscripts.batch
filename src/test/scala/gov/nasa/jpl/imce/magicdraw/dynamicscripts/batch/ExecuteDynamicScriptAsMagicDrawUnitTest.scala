@@ -91,8 +91,8 @@ import scala.language.implicitConversions
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 import scala.util.control.Exception._
-import scala.{Array, Boolean, Enumeration, Int, Long, None, Option, Some, StringContext, Unit}
-import scala.Predef.{classOf, require, ArrowAssoc, String, genericArrayOps}
+import scala.{Array, Boolean, Enumeration, Int, Long, None, Option, Some, StringContext, Tuple2, Unit}
+import scala.Predef.{augmentString, classOf, require, ArrowAssoc, String, genericArrayOps}
 import scalaz._
 import Scalaz._
 
@@ -149,36 +149,52 @@ object ExecuteDynamicScriptAsMagicDrawUnitTest {
 
     val s = new TestSuite()
 
-    Option.apply( System.getenv("DYNAMIC_SCRIPTS_TESTS_DIR") ) match {
+    Option.apply( System.getenv("DYNAMIC_SCRIPTS_RESULTS_DIR") ) match {
       case None =>
-        Assert.fail("# No 'DYNAMIC_SCRIPTS_TESTS_DIR' environment variable")
+        Assert.fail("# No 'DYNAMIC_SCRIPTS_RESULTS_DIR' environment variable")
 
-      case Some(testsDir) =>
-        System.out.println(s"# Use DYNAMIC_SCRIPTS_TESTS_DIR=$testsDir")
-        val testsFolder = new File(testsDir).toPath
-        val testsSpecs = Files.find(testsFolder, 1, jsonFilter)
-        for {
-          specPath <- testsSpecs.iterator()
-          specInfo <- {
-            val parsed: Try[JsResult[MagicDrawTestSpec]] = parseTestSpecification(specPath)
-            parsed match {
-              case Failure(t) =>
-                System.out.println(t.getMessage)
-                None
+      case Some(resultsLoc) =>
+        val resultsDir = new File(resultsLoc)
+        if (!resultsDir.isDirectory || !resultsDir.canWrite)
+          Assert.fail(s"# DYNAMIC_SCRIPTS_RESULTS_DIR=$resultsLoc must be an existing writeable directory")
+        val resultsPath = resultsDir.toPath
+        System.out.println(s"# Use DYNAMIC_SCRIPTS_RESULTS_DIR=$resultsPath")
 
-              case Success(JsError(errors)) =>
-                val message =
-                  s"# Error: Failed to parse test specification:\nfile: $specPath\n"+
-                  errors.mkString("\n","\n","\n")
-                Assert.fail(message)
-                None
+        Option.apply(System.getenv("DYNAMIC_SCRIPTS_TESTS_DIR")) match {
+          case None =>
+            Assert.fail("# No 'DYNAMIC_SCRIPTS_TESTS_DIR' environment variable")
 
-              case Success(JsSuccess(info, _)) =>
-                Some(info)
+          case Some(testsDir) =>
+            System.out.println(s"# Use DYNAMIC_SCRIPTS_TESTS_DIR=$testsDir")
+            val testsFolder = new File(testsDir).toPath
+            val testsSpecs = Files.find(testsFolder, 1, jsonFilter)
+
+            for {
+              specPath <- testsSpecs.iterator()
+              specInfo <- {
+                val parsed: Try[JsResult[MagicDrawTestSpec]] = parseTestSpecification(specPath)
+                parsed match {
+                  case Failure(t) =>
+                    System.out.println(t.getMessage)
+                    None
+
+                  case Success(JsError(errors)) =>
+                    val message =
+                      s"# Error: Failed to parse test specification:\nfile: $specPath\n" +
+                        errors.mkString("\n", "\n", "\n")
+                    Assert.fail(message)
+                    None
+
+                  case Success(JsSuccess(info, _)) =>
+                    val rel = testsFolder.relativize(new File(specPath.toString.stripSuffix(".json")).toPath)
+                    val specResultsDir = resultsPath.resolve(rel)
+                    Files.createDirectories(specResultsDir)
+                    Some(Tuple2(specResultsDir, info))
+                }
+              }
+            } {
+              s.addTest(new ExecuteDynamicScriptAsMagicDrawUnitTest(specInfo._1, specInfo._2))
             }
-          }
-        } {
-          s.addTest( new ExecuteDynamicScriptAsMagicDrawUnitTest(specInfo) )
         }
     }
 
@@ -193,7 +209,8 @@ object AuditReportMode extends Enumeration {
 }
 
 class ExecuteDynamicScriptAsMagicDrawUnitTest
-( spec: MagicDrawTestSpec )
+( resultsDir: Path,
+  spec: MagicDrawTestSpec )
   extends MagicDrawTestCase( "test_MagicDrawTestSpec", spec.testName ) {
 
   import junit.framework.Assert._
@@ -434,6 +451,8 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
     }
 
     val ev: ActionEvent = null
+
+    System.setProperty("DYNAMIC_SCRIPTS_RESULTS_DIR", resultsDir.toString)
 
     val result = invokeDynamicScriptAction(testProject, ev)
 
