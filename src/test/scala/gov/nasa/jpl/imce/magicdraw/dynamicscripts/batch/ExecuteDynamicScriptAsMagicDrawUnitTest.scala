@@ -108,6 +108,13 @@ class MDTestAPI() {}
 
 object ExecuteDynamicScriptAsMagicDrawUnitTest {
 
+  val DYNAMIC_SCRIPTS_RESULTS_DIR: String = "DYNAMIC_SCRIPTS_RESULTS_DIR"
+
+  val DYNAMIC_SCRIPTS_TESTS_DIR: String = "DYNAMIC_SCRIPTS_TESTS_DIR"
+
+  val DYNAMIC_SCRIPTS_TESTS_MAXDEPTH: String = "DYNAMIC_SCRIPTS_TESTS_MAXDEPTH"
+  val DYNAMIC_SCRIPTS_TESTS_DEFAULT_MAXDEPTH: String = "5"
+
   def parseTestSpecification
   (specPath: Path)
   : Try[JsResult[MagicDrawTestSpec]]
@@ -149,25 +156,41 @@ object ExecuteDynamicScriptAsMagicDrawUnitTest {
 
     val s = new TestSuite()
 
-    Option.apply( System.getenv("DYNAMIC_SCRIPTS_RESULTS_DIR") ) match {
+    val maxDepthValue =
+      nonFatalCatch[Int]
+        .withApply { (t: java.lang.Throwable) =>
+          throw t
+        }
+        .apply {
+          val v = Option
+            .apply(System.getenv(DYNAMIC_SCRIPTS_TESTS_MAXDEPTH))
+            .getOrElse(DYNAMIC_SCRIPTS_TESTS_DEFAULT_MAXDEPTH)
+            .toInt
+          if (v <= 0)
+            throw new java.lang.IllegalArgumentException(s"Search max depth must be > 0, not $v")
+          v
+        }
+
+    Option.apply( System.getenv(DYNAMIC_SCRIPTS_RESULTS_DIR) ) match {
       case None =>
-        Assert.fail("# No 'DYNAMIC_SCRIPTS_RESULTS_DIR' environment variable")
+        Assert.fail(s"# No '$DYNAMIC_SCRIPTS_RESULTS_DIR' environment variable")
 
       case Some(resultsLoc) =>
         val resultsDir = new File(resultsLoc)
         if (!resultsDir.isDirectory || !resultsDir.canWrite)
-          Assert.fail(s"# DYNAMIC_SCRIPTS_RESULTS_DIR=$resultsLoc must be an existing writeable directory")
+          Assert.fail(s"# $DYNAMIC_SCRIPTS_RESULTS_DIR=$resultsLoc must be an existing writeable directory")
         val resultsPath = resultsDir.toPath
-        System.out.println(s"# Use DYNAMIC_SCRIPTS_RESULTS_DIR=$resultsPath")
+        System.out.println(s"# Use $DYNAMIC_SCRIPTS_RESULTS_DIR=$resultsPath")
 
-        Option.apply(System.getenv("DYNAMIC_SCRIPTS_TESTS_DIR")) match {
+        Option.apply(System.getenv(DYNAMIC_SCRIPTS_TESTS_DIR)) match {
           case None =>
-            Assert.fail("# No 'DYNAMIC_SCRIPTS_TESTS_DIR' environment variable")
+            Assert.fail(s"# No '$DYNAMIC_SCRIPTS_TESTS_DIR' environment variable")
 
           case Some(testsDir) =>
-            System.out.println(s"# Use DYNAMIC_SCRIPTS_TESTS_DIR=$testsDir")
+            System.out.println(s"# Use $DYNAMIC_SCRIPTS_TESTS_DIR=$testsDir")
+            System.out.println(s"# Search for *.json file up to max depth=$maxDepthValue")
             val testsFolder = new File(testsDir).toPath
-            val testsSpecs = Files.find(testsFolder, 1, jsonFilter)
+            val testsSpecs = Files.find(testsFolder, maxDepthValue, jsonFilter)
 
             for {
               specPath <- testsSpecs.iterator()
