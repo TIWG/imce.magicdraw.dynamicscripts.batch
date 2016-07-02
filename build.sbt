@@ -150,15 +150,6 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     git.baseVersion := Versions.version,
 
-    // disable publishing the jar produced by `test:package`
-    publishArtifact in(Test, packageBin) := false,
-
-    // disable publishing the test API jar
-    publishArtifact in(Test, packageDoc) := false,
-
-    // disable publishing the test sources jar
-    publishArtifact in(Test, packageSrc) := false,
-
     unmanagedClasspath in Compile <++= unmanagedJars in Compile,
 
     resolvers += "Sonatype releases" at "https://oss.sonatype.org/content/repositories/releases",
