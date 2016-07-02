@@ -150,6 +150,8 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     git.baseVersion := Versions.version,
 
+    publishArtifact in Test := true,
+
     unmanagedClasspath in Compile <++= unmanagedJars in Compile,
 
     resolvers += "Sonatype releases" at "https://oss.sonatype.org/content/repositories/releases",
