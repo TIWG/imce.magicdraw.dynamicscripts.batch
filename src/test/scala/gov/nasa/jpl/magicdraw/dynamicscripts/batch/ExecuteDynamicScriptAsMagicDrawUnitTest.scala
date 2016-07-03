@@ -115,6 +115,9 @@ object ExecuteDynamicScriptAsMagicDrawUnitTest {
   val DYNAMIC_SCRIPTS_TESTS_MAXDEPTH: String = "DYNAMIC_SCRIPTS_TESTS_MAXDEPTH"
   val DYNAMIC_SCRIPTS_TESTS_DEFAULT_MAXDEPTH: String = "5"
 
+  val TEAMWORK_USER: String = "TEAMWORK_USER"
+  val TEAMWORK_PASSWORD: String = "TEAMWORK_PASSWORD"
+
   def parseTestSpecification
   (specPath: Path)
   : Try[JsResult[MagicDrawTestSpec]]
@@ -146,6 +149,20 @@ object ExecuteDynamicScriptAsMagicDrawUnitTest {
 
     val t1spec = MagicDrawTestSpec.formats.writes(t1)
     System.out.println(t1spec)
+
+    val t2 = SimpleMagicDrawTestSpec(
+      requiredPlugins=List("a"),
+      dynamicScriptFiles=List("f.dynamicScripts"),
+      projectLocation = Some(MagicDrawTeamworkProjectLocation(
+        teamworkServer="cae-fn-tw.jpl.nasa.gov",
+        teamworkPort=18001,
+        teamworkUser=Some("imce-ci"),
+        teamworkPassword=None,
+        teamworkProjectPath="IMCE Sample Spacecraft Model")),
+      testScript = InvokeToolbarMenu(className="a.b", methodName="c"))
+
+    val t2spec = MagicDrawTestSpec.formats.writes(t2)
+    System.out.println(t2spec)
 
     val jsonFilter = new java.util.function.BiPredicate[Path, BasicFileAttributes] {
 
@@ -333,31 +350,24 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
 
         import loc._
 
-        val secure = true
+        val user: String = teamworkUser.getOrElse(Option.apply( System.getenv(TEAMWORK_USER) )) match {
+          case None =>
+            fail("Need to specify a teamworkUser either in the *.json or via TEAMWORK_USER env. variable")
+            ""
+          case Some(s)
+            s
+        }
 
-        /*
-         * Questions for NoMagic:
-         *
-         * 1) TeamworkUtils.authenticate seems redundant with TeamworkUtils.loginWithSession
-         * However, authenticate() includes the secure boolean flag whereas loginWithSession() doesn't.
-         */
-        if (! TeamworkUtils.authenticate( teamworkServer, teamworkPort, secure, teamworkUser, teamworkPassword ))
-          fail("Cannot authenticate "+server_connection_info )
+        val pw: String = teamworkPassword.getOrElse(Option.apply( System.getenv(TEAMWORK_PASSWORD) )) match {
+          case None =>
+            fail("Need to specify a teamworkPassword either in the *.json or via TEAMWORK_PASSWORD env. variable")
+            ""
+          case Some(s)
+            s
+        }
 
-        else {
-          System.out.println(
-            step+") successfully authenticated for " + server_connection_info)
-
-
-          /*
-           * Questions for NoMagic:
-           *
-           * 2) TeamworkUtils.loginWithSession returns a com.nomagic.teamwork.common.users.SessionInfo
-           * There is no MD OpenAPI info about SessionInfo.
-           * What should we do with it, if anything?
-           */
           Option
-            .apply(TeamworkUtils.loginWithSession(teamworkServer, teamworkPort, teamworkUser, teamworkPassword)) match {
+            .apply(TeamworkUtils.loginWithSession(teamworkServer, teamworkPort, user, pw)) match {
             case None =>
               fail("Cannot login on Teamwork server: " + server_connection_info)
 
@@ -377,7 +387,6 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
                   testProject = Some(loadTeamworkProject(server_connection_info, pDescriptor))
                 }
           }
-        }
     }
   }
 

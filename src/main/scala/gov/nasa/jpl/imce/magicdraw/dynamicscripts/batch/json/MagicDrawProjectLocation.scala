@@ -40,7 +40,7 @@ package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json
 
 import play.api.libs.json._
 
-import scala.Int
+import scala.{Int,Option}
 import scala.Predef.{ArrowAssoc, String}
 
 sealed abstract trait MagicDrawProjectLocation {
@@ -80,12 +80,12 @@ object MagicDrawLocalProjectLocation {
 case class MagicDrawTeamworkProjectLocation
 ( teamworkServer: String,
   teamworkPort: Int,
-  teamworkUser: String,
-  teamworkPassword: String,
+  teamworkUser: Option[String],
+  teamworkPassword: Option[String],
   teamworkProjectPath: String)
   extends MagicDrawProjectLocation {
 
-  val server_connection_info = "md://"+teamworkUser+"@"+teamworkServer+":"+teamworkPort+"/'"+teamworkProjectPath+"'"
+  val server_connection_info = "md://"+teamworkServer+":"+teamworkPort+"/'"+teamworkProjectPath+"'"
 
   override def testName: String = teamworkProjectPath
 

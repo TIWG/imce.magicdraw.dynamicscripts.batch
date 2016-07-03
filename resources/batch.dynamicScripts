@@ -1,0 +1,14 @@
+
+toolbarMenuScripts(
+	name='IMCE DynamicScripts Batch'
+	scripts {
+		MainToolbarMenuAction(
+			toolbarMenuPath: { 'Teamwork' }
+			name: 'Test Teamwork Login'
+			project: imce.magicdraw.dynamicscripts.batch
+            access: r/o
+			class: gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.teamwork.TeamworkAccess
+			method: teamworkLogin )
+
+    }
+)
