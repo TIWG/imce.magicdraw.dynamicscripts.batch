@@ -165,6 +165,8 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     specsRoot := baseDirectory.value / "resources" / "tests",
 
+    scalaSource in Test := baseDirectory.value / "src" / "test" / "scala",
+
     testsResultsSetupTask := {
 
       val s = streams.value

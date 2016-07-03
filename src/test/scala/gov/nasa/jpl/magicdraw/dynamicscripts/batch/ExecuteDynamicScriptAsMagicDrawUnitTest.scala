@@ -350,19 +350,21 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
 
         import loc._
 
-        val user: String = teamworkUser.getOrElse(Option.apply( System.getenv(TEAMWORK_USER) )) match {
+        val user: String = teamworkUser
+          .orElse(Option.apply( System.getenv(ExecuteDynamicScriptAsMagicDrawUnitTest.TEAMWORK_USER) )) match {
           case None =>
             fail("Need to specify a teamworkUser either in the *.json or via TEAMWORK_USER env. variable")
             ""
-          case Some(s)
+          case Some(s) =>
             s
         }
 
-        val pw: String = teamworkPassword.getOrElse(Option.apply( System.getenv(TEAMWORK_PASSWORD) )) match {
+        val pw: String = teamworkPassword
+          .orElse(Option.apply( System.getenv(ExecuteDynamicScriptAsMagicDrawUnitTest.TEAMWORK_PASSWORD) )) match {
           case None =>
             fail("Need to specify a teamworkPassword either in the *.json or via TEAMWORK_PASSWORD env. variable")
             ""
-          case Some(s)
+          case Some(s) =>
             s
         }
 
