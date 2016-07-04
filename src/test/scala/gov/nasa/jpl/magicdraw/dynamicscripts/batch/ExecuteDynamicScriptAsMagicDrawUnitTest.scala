@@ -130,7 +130,15 @@ object ExecuteDynamicScriptAsMagicDrawUnitTest {
       Success( info )
     }
 
-  def suite: Test = {
+  def suite
+  : Test
+  = makeTestSuite(
+    (p: Path, spec: MagicDrawTestSpec) => new ExecuteDynamicScriptAsMagicDrawUnitTest(p, spec)
+  )
+
+  def makeTestSuite[T <: ExecuteDynamicScriptAsMagicDrawUnitTest]
+  (testFactory: (Path, MagicDrawTestSpec) => T)
+  : Test = {
 
     val t0 = SimpleMagicDrawTestSpec(
       requiredPlugins=List("a"),
@@ -233,7 +241,7 @@ object ExecuteDynamicScriptAsMagicDrawUnitTest {
                 }
               }
             } {
-              s.addTest(new ExecuteDynamicScriptAsMagicDrawUnitTest(specInfo._1, specInfo._2))
+              s.addTest(testFactory(specInfo._1, specInfo._2))
             }
         }
     }
