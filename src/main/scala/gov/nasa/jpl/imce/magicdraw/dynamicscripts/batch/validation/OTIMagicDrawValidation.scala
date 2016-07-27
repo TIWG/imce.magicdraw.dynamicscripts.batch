@@ -52,7 +52,6 @@ import gov.nasa.jpl.dynamicScripts.magicdraw.validation.internal.MDValidationAPI
 import scala.Predef.{ArrowAssoc, augmentString, require}
 import scala.collection.JavaConversions._
 import scala.collection.immutable._
-import scala.language.{implicitConversions, postfixOps}
 import scala.util.{Failure, Success, Try}
 import scala.{Option,None,Some,StringContext,Tuple2,Tuple3,Unit}
 import scala.Predef.{String}

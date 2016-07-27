@@ -39,17 +39,15 @@
 package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch
 
 import java.awt.event.ActionEvent
-import java.io.{File, FilenameFilter}
-import java.lang.{Integer, System, Thread}
+import java.io.File
+import java.lang.{System, Thread}
 import java.net.URLClassLoader
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path, Paths}
 
 import junit.framework.Test
 import junit.framework.TestSuite
-import junit.framework.TestListener
 
-import com.nomagic.actions.NMAction
 import com.nomagic.magicdraw.annotation.AnnotationManager
 import com.nomagic.magicdraw.core.Application
 import com.nomagic.magicdraw.core.Project
@@ -57,14 +55,8 @@ import com.nomagic.magicdraw.core.project.ProjectDescriptor
 import com.nomagic.magicdraw.core.project.ProjectsManager
 import com.nomagic.magicdraw.openapi.uml.SessionManager
 import com.nomagic.magicdraw.plugins.Plugin
-import com.nomagic.magicdraw.plugins.PluginDescriptor
 import com.nomagic.magicdraw.plugins.PluginUtils
 import com.nomagic.magicdraw.teamwork.application.TeamworkUtils
-import com.nomagic.magicdraw.teamwork2.TeamworkService
-import com.nomagic.magicdraw.teamwork2.ServerLoginInfo
-import com.nomagic.task.RunnableWithProgress
-import com.nomagic.task.ProgressStatus
-import com.nomagic.magicdraw.ui.MagicDrawProgressStatusRunner
 import com.nomagic.magicdraw.tests.MagicDrawTestCase
 import com.nomagic.magicdraw.uml.symbols.{DiagramPresentationElement, PresentationElement}
 import com.nomagic.uml2.ext.jmi.helpers.StereotypesHelper
@@ -87,12 +79,11 @@ import play.api.libs.json._
 
 import scala.collection.JavaConversions._
 import scala.collection.immutable._
-import scala.language.implicitConversions
 import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 import scala.util.control.Exception._
-import scala.{Array, Boolean, Enumeration, Int, Long, None, Option, Some, StringContext, Tuple2, Unit}
-import scala.Predef.{augmentString, classOf, require, ArrowAssoc, String, genericArrayOps}
+import scala.{Boolean, Enumeration, Int, None, Option, Some, StringContext, Tuple2, Unit}
+import scala.Predef.{augmentString, classOf, require, ArrowAssoc, String}
 import scalaz._
 import Scalaz._
 

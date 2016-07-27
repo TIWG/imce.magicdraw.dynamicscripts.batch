@@ -1,0 +1,14 @@
+{
+  "imce.oti.mof.magicdraw.dynamicscripts":"../imce.oti.mof.magicdraw.dynamicscripts",
+  "org.omg.oti.uml.magicdraw.adapter": "../org.omg.oti.uml.magicdraw.adapter",
+  "org.omg.oti.uml.core": "../org.omg.oti.uml.core",
+  "org.omg.oti.uml.change_migration": "../org.omg.oti.uml.change_migration",
+  "org.omg.oti.uml.composite_structure_tree_analysis": "../org.omg.oti.uml.composite_structure_tree_analysis",
+  "org.omg.oti.uml.canonical_xmi.serialization": "../org.omg.oti.uml.canonical_xmi.serialization",
+  "org.omg.oti.uml.canonical_xmi.loader": "../org.omg.oti.uml.canonical_xmi.loader",
+  "org.omg.oti.uml.json": "../org.omg.oti.uml.json",
+  "org.omg.oti.uml.json.serialization": "../org.omg.oti.uml.json.serialization",
+  "org.omg.oti.mof.schema": "../org.omg.oti.mof.schema",
+  "org.omg.oti.mof.spark": "../org.omg.oti.mof.spark",
+  "imce.oti.uml.magicdraw.dynamicscripts": "../imce.oti.uml.magicdraw.dynamicscripts"
+}

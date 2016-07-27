@@ -40,8 +40,8 @@ package gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json
 
 import play.api.libs.json._
 
-import scala.Predef.{ArrowAssoc, String}
-import scalaz.{@@, Tag}
+import scala.Predef.String
+import scalaz.@@
 import OTIPrimitiveTypes._
 
 case class OTISpecificationRootCharacteristics

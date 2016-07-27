@@ -46,7 +46,6 @@ import gov.nasa.jpl.dynamicScripts.magicdraw.utils.MDUML
 import gov.nasa.jpl.dynamicScripts.magicdraw.validation.MagicDrawValidationDataResults
 
 import scala.collection.JavaConversions._
-import scala.language.postfixOps
 import scala.util._
 import scala.xml._
 import scala.{Boolean,Option,None,Some,StringContext,Unit}

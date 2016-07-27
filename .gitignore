@@ -5,7 +5,7 @@
 *.bak
 *.log
 *~
-links.json
+off.links.json
 project/project
 project/target
 target
