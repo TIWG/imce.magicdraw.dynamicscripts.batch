@@ -100,6 +100,8 @@ shellPrompt in ThisBuild := { state => Project.extract(state).currentRef.project
 
 lazy val mdRoot = SettingKey[File]("md-root", "MagicDraw Installation Directory")
 
+lazy val testsInputsDir = SettingKey[File]("tests-inputs-dir", "Directory to scan for input *.json tests")
+
 lazy val testsResultDir = SettingKey[File]("tests-result-dir", "Directory for the tests results to archive as the test resource artifact")
 
 lazy val testsResultsSetupTask = taskKey[Unit]("Create the tests results directory")
@@ -161,6 +163,8 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
     mdJVMFlags := Seq("-Xmx8G"), //
     // for debugging: Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"),
 
+    testsInputsDir := baseDirectory.value / "resources" / "tests",
+
     mdRoot := baseDirectory.value / "target" / "md.package",
 
     testsResultDir := baseDirectory.value / "target" / "md.testResults",
@@ -195,17 +199,41 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     testGrouping in Test := {
       val original = (testGrouping in Test).value
+      val tests_dir = testsInputsDir.value
       val md_install_dir = mdRoot.value
       val tests_results_dir = testsResultDir.value
       val pas = (packageBin in Universal).value
       val jvmFlags = mdJVMFlags.value
       val jHome = javaHome.value
-      val class_dir = (classDirectory in Compile).value
       val cInput = connectInput.value
-      val outputS = outputStrategy.value
       val jOpts = javaOptions.value
       val env = envVars.value
       val s = streams.value
+
+      val testOutputFile = tests_results_dir.toPath.resolve("output.log").toFile
+
+      val xlogger = new xsbti.Logger {
+
+        def debug(msg: xsbti.F0[String]): Unit = append(msg())
+        def error(msg: xsbti.F0[String]): Unit = append(msg())
+        def info(msg: xsbti.F0[String]): Unit = append(msg())
+        def warn(msg: xsbti.F0[String]): Unit = append(msg())
+        def trace(exception: xsbti.F0[Throwable]): Unit = {
+          val t = exception()
+          append(t.getMessage)
+          append(t.getStackTraceString)
+        }
+
+        def append(msg: String): Unit = {
+          val pw = new java.io.PrintWriter(new java.io.FileWriter(testOutputFile, true))
+          pw.println(msg)
+          pw.flush()
+          pw.close()
+        }
+
+      }
+
+      val logger = new FullLogger(xlogger)
 
       val ds_dir = md_install_dir / "dynamicScripts"
 
@@ -213,8 +241,6 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
       s.log.info(
         s"=> Installed ${files.size} " +
           s"files extracted from zip: $pas")
-
-      val tests_dir = ds_dir / "imce.magicdraw.dynamicscripts.batch" / "resources" / "tests"
 
       val mdProperties = new java.util.Properties()
       IO.load(mdProperties, md_install_dir / "bin" / "magicdraw.properties")
@@ -275,16 +301,35 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
         s.log.info(jvmFlags.mkString("\n"))
         s.log.info(s"# ------")
 
+        val testPropertiesFile =
+          md_install_dir.toPath.resolve("data/imce.properties").toFile
+
+        val out = new java.io.PrintWriter(new java.io.FileWriter(testPropertiesFile))
+        val in = Source.fromFile(md_install_dir.toPath.resolve("data/test.properties").toFile)
+        for (line <- in.getLines) {
+          if (line.startsWith("log4j.appender.R.File="))
+            out.println(s"log4j.appender.R.File=$tests_results_dir/tests.log")
+          else if (line.startsWith("log4j.appender.SO=")) {
+            out.println(s"log4j.appender.SO=org.apache.log4j.RollingFileAppender")
+            out.println(s"log4j.appender.SO.File=$tests_results_dir/console.log")
+          }
+          else
+            out.println(line)
+        }
+        out.close()
+
         val forkOptions = ForkOptions(
           bootJars = imceBoot ++ mdBoot,
           javaHome = jHome,
           connectInput = cInput,
-          outputStrategy = outputS,
+          outputStrategy = Some(LoggedOutput(logger)),
           runJVMOptions = jOpts ++ Seq(
             "-classpath", (imcePrefix ++ mdClasspath).mkString(File.pathSeparator),
             "-DLOCALCONFIG=false",
             "-DWINCONFIG=false",
-            "-DHOME=" + md_install_dir.getAbsolutePath
+            "-DHOME=" + md_install_dir.getAbsolutePath,
+            s"-Ddebug.properties=$testPropertiesFile",
+            "-Ddebug.properties.file=imce.properties"
           ) ++ jvmFlags,
           workingDirectory = Some(md_install_dir),
           envVars = env +
