@@ -45,9 +45,7 @@ import java.net.URLClassLoader
 import java.nio.file.attribute.BasicFileAttributes
 import java.nio.file.{Files, Path, Paths}
 
-import junit.framework.Test
-import junit.framework.TestSuite
-
+import junit.framework.{AssertionFailedError, Test, TestSuite}
 import com.nomagic.magicdraw.annotation.AnnotationManager
 import com.nomagic.magicdraw.core.Application
 import com.nomagic.magicdraw.core.Project
@@ -61,7 +59,6 @@ import com.nomagic.magicdraw.tests.MagicDrawTestCase
 import com.nomagic.magicdraw.uml.symbols.{DiagramPresentationElement, PresentationElement}
 import com.nomagic.uml2.ext.jmi.helpers.StereotypesHelper
 import com.nomagic.uml2.ext.magicdraw.classes.mdkernel.{Diagram, Element, InstanceSpecification, LiteralString}
-
 import gov.nasa.jpl.dynamicScripts.DynamicScriptsTypes.{DiagramContextMenuAction, DynamicActionScript, MainToolbarMenuAction}
 import gov.nasa.jpl.dynamicScripts.magicdraw._
 import gov.nasa.jpl.dynamicScripts.magicdraw.validation.MagicDrawValidationDataResults
@@ -72,9 +69,7 @@ import gov.nasa.jpl.dynamicScripts.magicdraw.actions._
 import gov.nasa.jpl.dynamicScripts.magicdraw.utils.MDUML
 import gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.json._
 import gov.nasa.jpl.imce.magicdraw.dynamicscripts.batch.validation.OTIMagicDrawValidation
-
 import org.junit._
-
 import play.api.libs.json._
 
 import scala.collection.JavaConversions._
@@ -83,7 +78,7 @@ import scala.language.postfixOps
 import scala.util.{Failure, Success, Try}
 import scala.util.control.Exception._
 import scala.{Boolean, Enumeration, Int, None, Option, Some, StringContext, Tuple2, Unit}
-import scala.Predef.{augmentString, classOf, require, ArrowAssoc, String}
+import scala.Predef.{ArrowAssoc, String, augmentString, classOf, require}
 import scalaz._
 import Scalaz._
 
@@ -291,8 +286,25 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
     }
 
 
-  override def setUpTest(): Unit = {
-    super.setUpTest()
+  override def setUpTest(): Unit =
+    nonFatalCatch[Unit]
+      .withApply {
+        case f: AssertionFailedError =>
+          System.out.println(f.getMessage)
+          f.printStackTrace(System.out)
+          throw f
+
+        case t: java.lang.Throwable =>
+          System.out.println(t.getMessage)
+          t.printStackTrace(System.out)
+          fail(t.getMessage)
+      }
+      .apply {
+        super.setUpTest()
+        internalSetUpTest()
+      }
+
+  def internalSetUpTest(): Unit = {
 
     val id2startedPlugin
     : Map[String, Plugin]
@@ -432,7 +444,24 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
     }
   }
 
-  override def tearDownTest(): Unit = {
+  override def tearDownTest(): Unit =
+    nonFatalCatch[Unit]
+      .withApply {
+        case f: AssertionFailedError =>
+          System.out.println(f.getMessage)
+          f.printStackTrace(System.out)
+          throw f
+
+        case t: java.lang.Throwable =>
+          System.out.println(t.getMessage)
+          t.printStackTrace(System.out)
+          fail(t.getMessage)
+      }
+      .apply {
+        internalTearDownTest()
+      }
+
+  def internalTearDownTest(): Unit = {
     val t0 = System.currentTimeMillis
 
     /*
@@ -493,8 +522,10 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
 
     result match {
       case Failure(t) =>
-        System.out.println( step+") error executing DynamicScript in "+prettyDurationFromTo(t0, t1) )
+        val message = step+") error executing DynamicScript in "+prettyDurationFromTo(t0, t1)
+        System.out.println(message)
         t.printStackTrace(System.out)
+        fail(message)
 
       case Success(None) =>
         System.out.println( step+") successfully ran DynamicScript in "+prettyDurationFromTo(t0, t1) )
