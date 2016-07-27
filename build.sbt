@@ -106,8 +106,6 @@ lazy val testsResultDir = SettingKey[File]("tests-result-dir", "Directory for th
 
 lazy val testsResultsSetupTask = taskKey[Unit]("Create the tests results directory")
 
-lazy val specsRoot = SettingKey[File]("specs-root", "MagicDraw DynamicScripts Test Specification Directory")
-
 lazy val mdJVMFlags = SettingKey[Seq[String]]("md-jvm-flags", "Extra JVM flags for running MD (e.g., debugging)")
 
 lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
@@ -168,8 +166,6 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
     mdRoot := baseDirectory.value / "target" / "md.package",
 
     testsResultDir := baseDirectory.value / "target" / "md.testResults",
-
-    specsRoot := baseDirectory.value / "resources" / "tests",
 
     scalaSource in Test := baseDirectory.value / "src" / "test" / "scala",
 
