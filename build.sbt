@@ -128,7 +128,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
       sbtrelease.ReleaseStateTransformations.tagRelease,
       sbtrelease.ReleaseStateTransformations.publishArtifacts,
       sbtrelease.ReleaseStateTransformations.pushChanges,
-      //sbtrelease.ReleaseStateTransformations.runTest,
+      sbtrelease.ReleaseStateTransformations.runTest,
       IMCEReleasePlugin.successSentinel
     ),
 
