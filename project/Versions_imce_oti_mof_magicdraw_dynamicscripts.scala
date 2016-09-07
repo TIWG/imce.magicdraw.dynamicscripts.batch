@@ -1,6 +1,6 @@
 object Versions_imce_oti_mof_magicdraw_dynamicscripts {
 
-  // https://github.jpl.nasa.gov/imce/imce.oti.mof.magicdraw.dynamicscripts
-  val version="3.7.0"
+  // https://github.com/TIWG/imce.oti.mof.magicdraw.dynamicscripts
+  val version="3.8.0"
 
 }

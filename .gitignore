@@ -5,7 +5,9 @@
 *.bak
 *.log
 *~
-off.links.json
+*links.json
 project/project
 project/target
 target
+local.*
+gh-pages/

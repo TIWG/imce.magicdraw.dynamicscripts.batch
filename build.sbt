@@ -1,92 +1,14 @@
 import java.io.File
 import sbt.Keys._
 import sbt._
+import scala.io.Source
 
 import spray.json._, DefaultJsonProtocol._
 
 import gov.nasa.jpl.imce.sbt._
 import gov.nasa.jpl.imce.sbt.ProjectHelper._
 
-useGpg := true
-
 updateOptions := updateOptions.value.withCachedResolution(true)
-
-developers := List(
-  Developer(
-    id="rouquett",
-    name="Nicolas F. Rouquette",
-    email="nicolas.f.rouquette@jpl.nasa.gov",
-    url=url("https://gateway.jpl.nasa.gov/personal/rouquett/default.aspx")))
-
-import scala.io.Source
-import scala.util.control.Exception._
-
-def docSettings(diagrams:Boolean): Seq[Setting[_]] =
-  Seq(
-    sources in (Compile,doc) <<= (git.gitUncommittedChanges, sources in (Compile,compile)) map {
-      (uncommitted, compileSources) =>
-        if (uncommitted)
-          Seq.empty
-        else
-          compileSources
-    },
-
-    sources in (Test,doc) <<= (git.gitUncommittedChanges, sources in (Test,compile)) map {
-      (uncommitted, testSources) =>
-        if (uncommitted)
-          Seq.empty
-        else
-          testSources
-    },
-
-    scalacOptions in (Compile,doc) ++=
-      (if (diagrams)
-        Seq("-diagrams")
-      else
-        Seq()
-        ) ++
-        Seq(
-          "-doc-title", name.value,
-          "-doc-root-content", baseDirectory.value + "/rootdoc.txt"
-        ),
-    autoAPIMappings := ! git.gitUncommittedChanges.value,
-    apiMappings <++=
-      ( git.gitUncommittedChanges,
-        dependencyClasspath in Compile in doc,
-        IMCEKeys.nexusJavadocRepositoryRestAPIURL2RepositoryName,
-        IMCEKeys.pomRepositoryPathRegex,
-        streams ) map { (uncommitted, deps, repoURL2Name, repoPathRegex, s) =>
-        if (uncommitted)
-          Map[File, URL]()
-        else
-          (for {
-            jar <- deps
-            url <- jar.metadata.get(AttributeKey[ModuleID]("moduleId")).flatMap { moduleID =>
-              val urls = for {
-                (repoURL, repoName) <- repoURL2Name
-                (query, match2publishF) = IMCEPlugin.nexusJavadocPOMResolveQueryURLAndPublishURL(
-                  repoURL, repoName, moduleID)
-                url <- nonFatalCatch[Option[URL]]
-                  .withApply { (_: java.lang.Throwable) => None }
-                  .apply({
-                    val conn = query.openConnection.asInstanceOf[java.net.HttpURLConnection]
-                    conn.setRequestMethod("GET")
-                    conn.setDoOutput(true)
-                    repoPathRegex
-                      .findFirstMatchIn(Source.fromInputStream(conn.getInputStream).getLines.mkString)
-                      .map { m =>
-                        val javadocURL = match2publishF(m)
-                        s.log.info(s"Javadoc for: $moduleID")
-                        s.log.info(s"= mapped to: $javadocURL")
-                        javadocURL
-                      }
-                  })
-              } yield url
-              urls.headOption
-            }
-          } yield jar.data -> url).toMap
-      }
-  )
 
 resolvers := {
   val previous = resolvers.value
@@ -113,8 +35,6 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
   .enablePlugins(IMCEReleasePlugin)
   .settings(dynamicScriptsResourceSettings("imce.magicdraw.dynamicscripts.batch"))
   .settings(IMCEPlugin.strictScalacFatalWarningsSettings)
-  // enable when JPL has a Nexus Pro configured with a cache of published javadoc html pages.
-  //.settings(docSettings(diagrams=false))
   .settings(IMCEReleasePlugin.packageReleaseProcessSettings )
   .settings(
     releaseProcess := Seq(
@@ -132,13 +52,9 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
       IMCEReleasePlugin.successSentinel
     ),
 
-    IMCEKeys.licenseYearOrRange := "2014-2016",
+    IMCEKeys.licenseYearOrRange := "2016",
     IMCEKeys.organizationInfo := IMCEPlugin.Organizations.oti,
     IMCEKeys.targetJDK := IMCEKeys.jdk18.value,
-
-    organization := "gov.nasa.jpl.imce.magicdraw.dynamicscripts",
-    organizationHomepage :=
-      Some(url("https://github.jpl.nasa.gov/imce/gov.nasa.jpl.imce.team")),
 
     buildInfoPackage := "imce.magicdraw.dynamicscripts.batch",
     buildInfoKeys ++= Seq[BuildInfoKey](BuildInfoKey.action("buildDateUTC") { buildUTCDate.value }),
@@ -156,14 +72,15 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     unmanagedClasspath in Compile <++= unmanagedJars in Compile,
 
-    resolvers += "Sonatype releases" at "https://oss.sonatype.org/content/repositories/releases",
+    resolvers += Resolver.bintrayRepo("jpl-imce", "gov.nasa.jpl.imce"),
+    resolvers += Resolver.bintrayRepo("tiwg", "org.omg.tiwg"),
 
     mdJVMFlags := Seq("-Xmx8G"), //
     // for debugging: Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"),
 
     testsInputsDir := baseDirectory.value / "resources" / "tests",
 
-    mdRoot := baseDirectory.value / "target" / "md.package",
+    mdRoot in ThisBuild := baseDirectory.value / "target" / "md.package",
 
     testsResultDir := baseDirectory.value / "target" / "md.testResults",
 
@@ -348,73 +265,69 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
     "imce-oti-mof-magicdraw-dynamicscripts",
     "imce.oti.mof.magicdraw.dynamicscripts",
     Seq(
-      "gov.nasa.jpl.imce.oti" %% "imce-oti-mof-magicdraw-dynamicscripts"
+      "org.omg.tiwg" %% "imce.oti.mof.magicdraw.dynamicscripts"
         % Versions_imce_oti_mof_magicdraw_dynamicscripts.version % "compile" withSources() withJavadoc() artifacts
-        Artifact("imce-oti-mof-magicdraw-dynamicscripts", "zip", "zip", Some("resource"), Seq(), None, Map())
+        Artifact("imce.oti.mof.magicdraw.dynamicscripts", "zip", "zip", Some("resource"), Seq(), None, Map())
     )
   )
   .settings(
     libraryDependencies += "com.novocode" % "junit-interface" % "0.11" % "test,compile",
 
-    extractArchives <<= (baseDirectory, update, streams) map {
-      (base, up, s) =>
+    extractArchives <<= (baseDirectory, update, streams, mdRoot in ThisBuild) map {
+      (base, up, s, mdInstallDir) =>
 
-        val mdInstallDir = base / "target" / "md.package"
         if (!mdInstallDir.exists) {
 
-          IO.createDirectory(mdInstallDir)
+          val parts = (for {
+            cReport <- up.configurations
+            if cReport.configuration == "compile"
+            mReport <- cReport.modules
+            if mReport.module.organization == "org.omg.tiwg.vendor.nomagic"
+            (artifact, archive) <- mReport.artifacts
+          } yield archive).sorted
 
-          val pfilter: DependencyFilter = new DependencyFilter {
-            def apply(c: String, m: ModuleID, a: Artifact): Boolean =
-              (a.`type` == "zip" || a.`type` == "resource") &&
-                a.extension == "zip" &&
-                ( m.organization == "gov.nasa.jpl.cae.magicdraw.packages" ||
-                  m.organization == "gov.nasa.jpl.imce.magicdraw.plugins" )
-          }
+          s.log.info(s"Extracting MagicDraw from ${parts.size} parts:")
+          parts.foreach { p => s.log.info(p.getAbsolutePath) }
 
-          val ps: Seq[File] = up.matching(pfilter)
-          ps.foreach { zip =>
-            val files = IO.unzip(zip, mdInstallDir)
-            s.log.info(
-              s"=> created md.install.dir=$mdInstallDir with ${files.size} " +
-                s"files extracted from zip: ${zip.getName}")
-          }
+          val merged = File.createTempFile("md_merged", ".zip")
+          println(s"merged: ${merged.getAbsolutePath}")
 
-          val mdBinFolder = mdInstallDir / "bin"
-          require(mdBinFolder.exists, "md bin: $mdBinFolder")
+          val zip = File.createTempFile("md_no_install", ".zip")
+          println(s"zip: ${zip.getAbsolutePath}")
 
-          val dsFolder = mdInstallDir / "dynamicScripts"
-          IO.createDirectory(dsFolder)
+          val script = File.createTempFile("unzip_md", ".sh")
+          println(s"script: ${script.getAbsolutePath}")
+
+          val out = new java.io.PrintWriter(new java.io.FileOutputStream(script))
+          out.println("#!/bin/bash")
+          out.println(parts.map(_.getAbsolutePath).mkString("cat ", " ", s" > ${merged.getAbsolutePath}"))
+          out.println(s"zip -FF ${merged.getAbsolutePath} --out ${zip.getAbsolutePath}")
+          out.println(s"unzip -q ${zip.getAbsolutePath} -d ${mdInstallDir.getAbsolutePath}")
+          out.close()
+
+          val result = sbt.Process(command="/bin/bash", arguments=Seq[String](script.getAbsolutePath)).!
+
+          require(0 <= result && result <= 2, s"Failed to execute script (exit=$result): ${script.getAbsolutePath}")
+
+          val mdDynamicScriptsDir = mdInstallDir / "dynamicScripts"
+          IO.createDirectory(mdDynamicScriptsDir)
 
           val zfilter: DependencyFilter = new DependencyFilter {
             def apply(c: String, m: ModuleID, a: Artifact): Boolean =
-              c == "compile" &&
-                (a.`type` == "zip" || a.`type` == "resource") &&
-                a.extension == "zip" && {
-
-                val filter =
-                  m.organization == "org.omg.tiwg" ||
-                    m.organization == "gov.nasa.jpl.imce.oti" ||
-                    m.organization == "gov.nasa.jpl.imce.omf"
-
-                if (!filter)
-                  s.log.info(s"-- excluding: ${m.organization}, ${a.name}")
-
-                filter
-              }
+              (a.`type` == "zip" || a.`type` == "resource") &&
+                a.extension == "zip" &&
+                m.organization == "org.omg.tiwg"
           }
           val zs: Seq[File] = up.matching(zfilter)
           zs.foreach { zip =>
-            val files = IO.unzip(zip, dsFolder)
+            val files = IO.unzip(zip, mdDynamicScriptsDir)
             s.log.info(
-              s"=> extracted dynamic scripts with ${files.size} from zip: ${zip.getName}")
+              s"=> extracted ${files.size} DynamicScripts files from zip: ${zip.getName}")
           }
 
-        } else {
+        } else
           s.log.info(
             s"=> use existing md.install.dir=$mdInstallDir")
-        }
-
     },
 
     unmanagedJars in Compile <++= (baseDirectory, update, streams, extractArchives) map {

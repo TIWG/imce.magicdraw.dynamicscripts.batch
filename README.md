@@ -1,4 +1,7 @@
-# IMCE MagicDraw DynamicScripts Batch launcher
+# DynamicScripts batch launcher for MagicDraw
+
+[![Build Status](https://travis-ci.org/TIWG/imce.magicdraw.dynamicscripts.batch.svg?branch=master)](https://travis-ci.org/TIWG/imce.magicdraw.dynamicscripts.batch)
+ [ ![Download](https://api.bintray.com/packages/tiwg/org.omg.tiwg/imce.magicdraw.dynamicscripts.batch/images/download.svg) ](https://bintray.com/tiwg/org.omg.tiwg/imce.magicdraw.dynamicscripts.batch/_latestVersion)
 
 This is a small utility to execute an IMCE MagicDraw DynamicScript as a batch MagicDraw Unit Test.
 
