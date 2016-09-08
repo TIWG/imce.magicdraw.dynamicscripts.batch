@@ -12,4 +12,5 @@ openssl aes-256-cbc -pass pass:$ENCRYPTION_PASSWORD -in pubring.gpg.enc -out loc
 openssl aes-256-cbc -pass pass:$ENCRYPTION_PASSWORD -in credentials.sbt.enc -out local.credentials.sbt -d
 openssl aes-256-cbc -pass pass:$ENCRYPTION_PASSWORD -in deploy_key.enc -out local.deploy_key -d
 
-sbt -jvm-opts travis/jvmopts.compile compile test
+# To run MagicDraw unit tests on travis, a MagicDraw license is required.
+sbt -jvm-opts travis/jvmopts.compile compile

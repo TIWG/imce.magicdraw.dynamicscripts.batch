@@ -87,6 +87,45 @@ object MDTestAPI {
   def closeProjectNoSave(pManager: ProjectsManager): Unit =
     pManager.closeProjectNoSave()
 
+  /**
+    * The goal is to have a clear test failure if MagicDraw cannot start for whatever reason
+    * (typically, a missing or invalid license).
+    * When this happens, a java.lang.RuntimeException("Application is not started.") is thrown.
+    *
+    * Unfortunately, this exception is ignored and can't be caught in test code:
+    *
+    * java.lang.RuntimeException: Application is not started.
+    * at com.nomagic.magicdraw.tests.common.TestEnvironment.startMagicDrawUML(TestEnvironment.java:124)
+    * at com.nomagic.magicdraw.tests.MagicDrawTestCase.startMagicDraw(MagicDrawTestCase.java:281)
+    * at com.nomagic.magicdraw.tests.MagicDrawTestCase$1.startMagicDraw(MagicDrawTestCase.java:261)
+    * at com.nomagic.magicdraw.tests.TestUtil.checkPreconditions(TestUtil.java:225)
+    * at com.nomagic.magicdraw.tests.MagicDrawTestCase.run(MagicDrawTestCase.java:264)
+    * at junit.framework.TestSuite.runTest(TestSuite.java:208)
+    * at junit.framework.TestSuite.run(TestSuite.java:203)
+    * at org.junit.internal.runners.JUnit38ClassRunner.run(JUnit38ClassRunner.java:84)
+    * at org.junit.runners.Suite.runChild(Suite.java:127)
+    * at org.junit.runners.Suite.runChild(Suite.java:26)
+    * at org.junit.runners.ParentRunner$3.run(ParentRunner.java:238)
+    * at org.junit.runners.ParentRunner$1.schedule(ParentRunner.java:63)
+    * at org.junit.runners.ParentRunner.runChildren(ParentRunner.java:236)
+    * at org.junit.runners.ParentRunner.access$000(ParentRunner.java:53)
+    * at org.junit.runners.ParentRunner$2.evaluate(ParentRunner.java:229)
+    * at org.junit.runners.ParentRunner.run(ParentRunner.java:309)
+    * at org.junit.runner.JUnitCore.run(JUnitCore.java:160)
+    * at org.junit.runner.JUnitCore.run(JUnitCore.java:138)
+    * at com.novocode.junit.JUnitRunner$1.execute(JUnitRunner.java:132)
+    * at sbt.ForkMain$Run$2.call(ForkMain.java:296)
+    * at sbt.ForkMain$Run$2.call(ForkMain.java:286)
+    * at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+    * at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)
+    * at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)
+    * at java.lang.Thread.run(Thread.java:745)
+    *
+    * The workaround is to call TestEnvironment.startMagicDrawUML(), an internal API,
+    * a second time from test code where the exception will force a test failure.
+    */
+  def startMD(): Unit =
+    com.nomagic.magicdraw.tests.common.TestEnvironment.startMagicDrawUML()
 }
 
 @scala.deprecated("", "")
@@ -251,8 +290,8 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
   import AuditReportMode._
   import MDTestAPI._
 
-  val a = Application.getInstance
-  val pManager: ProjectsManager = a.getProjectsManager
+  lazy val a = Application.getInstance
+  lazy val pManager: ProjectsManager = a.getProjectsManager
 
   var stepCounter: Int = 0
   def step: Int = {
@@ -267,7 +306,7 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
   override def getRequiredPlugins: java.util.List[String] =
     spec.requiredPlugins
 
-  val dynamicScriptFiles
+  lazy val dynamicScriptFiles
   : List[String]
   = nonFatalCatch[List[String]]
     .withApply { (t: java.lang.Throwable) =>
@@ -306,9 +345,14 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
 
   def internalSetUpTest(): Unit = {
 
+    MDTestAPI.startMD()
+
     val id2startedPlugin
     : Map[String, Plugin]
     = PluginUtils.getPlugins map { p => p.getDescriptor.getID -> p } toMap
+
+    System.out.println(s"${id2startedPlugin.size} plugins have started:")
+    id2startedPlugin.keys.toVector.sorted.foreach { id => System.out.println(s" => started: $id") }
 
     val missingPlugins: List[String] = for {
       requiredPlugin <- getRequiredPlugins.toList
@@ -316,7 +360,7 @@ class ExecuteDynamicScriptAsMagicDrawUnitTest
     } yield requiredPlugin
 
     assertTrue(
-      s"${missingPlugins.size} have not been started: "+
+      s"${missingPlugins.size} plugin(s) have not been started: "+
       s"${missingPlugins.mkString( "\n", "\n", "\n Check the test configuration" )}",
       missingPlugins.isEmpty )
 
