@@ -1,16 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <classpath>
-	<classpathentry kind="src" path="src"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/org.omg.oti.mof.schema"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/org.omg.oti.uml.core"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/org.omg.oti.uml.json"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/org.omg.oti.uml.json.serialization"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/org.omg.oti.uml.composite_structure_tree_analysis"/>
-    <classpathentry combineaccessrules="false" kind="src" path="/org.omg.oti.uml.change_migration"/>
-   	<classpathentry combineaccessrules="false" kind="src" path="/org.omg.oti.uml.canonical_xmi.serialization"/>
-   	<classpathentry combineaccessrules="false" kind="src" path="/org.omg.oti.uml.canonical_xmi.loader"/>
-   	<classpathentry combineaccessrules="false" kind="src" path="/org.omg.oti.uml.magicdraw.adapter"/>
-   	<classpathentry combineaccessrules="false" kind="src" path="/imce.oti.uml.magicdraw.dynamicscripts"/>
+	<classpathentry kind="src" path="src/main/scala"/>
    	<classpathentry combineaccessrules="false" kind="src" path="/imce.oti.mof.magicdraw.dynamicscripts"/>
 	<classpathentry kind="output" path="target/scala-2.11/classes"/>
 </classpath>
