@@ -280,103 +280,92 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
       val mdInstallDir = (mdRoot in ThisBuild).value
       val sbv = scalaBinaryVersion.value
 
-          if (!mdInstallDir.exists) {
+      if (!mdInstallDir.exists) {
 
-            val parts = (for {
-              cReport <- up.configurations
-              if cReport.configuration == "compile"
-              mReport <- cReport.modules
-              if mReport.module.organization == "org.omg.tiwg.vendor.nomagic"
-              (artifact, archive) <- mReport.artifacts
-            } yield archive).sorted
+        val parts = (for {
+          cReport <- up.configurations
+          if cReport.configuration == "compile"
+          mReport <- cReport.modules
+          if mReport.module.organization == "org.omg.tiwg.vendor.nomagic"
+          (artifact, archive) <- mReport.artifacts
+        } yield archive).sorted
 
-            s.log.info(s"Extracting MagicDraw from ${parts.size} parts:")
-            parts.foreach { p => s.log.info(p.getAbsolutePath) }
+        s.log.info(s"Extracting MagicDraw from ${parts.size} parts:")
+        parts.foreach { p => s.log.info(p.getAbsolutePath) }
 
-            val merged = File.createTempFile("md_merged", ".zip")
-            println(s"merged: ${merged.getAbsolutePath}")
+        val merged = File.createTempFile("md_merged", ".zip")
+        println(s"merged: ${merged.getAbsolutePath}")
 
-            val zip = File.createTempFile("md_no_install", ".zip")
-            println(s"zip: ${zip.getAbsolutePath}")
+        val zip = File.createTempFile("md_no_install", ".zip")
+        println(s"zip: ${zip.getAbsolutePath}")
 
-            val script = File.createTempFile("unzip_md", ".sh")
-            println(s"script: ${script.getAbsolutePath}")
+        val script = File.createTempFile("unzip_md", ".sh")
+        println(s"script: ${script.getAbsolutePath}")
 
-            val out = new java.io.PrintWriter(new java.io.FileOutputStream(script))
-            out.println("#!/bin/bash")
-            out.println(parts.map(_.getAbsolutePath).mkString("cat ", " ", s" > ${merged.getAbsolutePath}"))
-            out.println(s"zip -FF ${merged.getAbsolutePath} --out ${zip.getAbsolutePath}")
-            out.println(s"unzip -q ${zip.getAbsolutePath} -d ${mdInstallDir.getAbsolutePath}")
-            out.close()
+        val out = new java.io.PrintWriter(new java.io.FileOutputStream(script))
+        out.println("#!/bin/bash")
+        out.println(parts.map(_.getAbsolutePath).mkString("cat ", " ", s" > ${merged.getAbsolutePath}"))
+        out.println(s"zip -FF ${merged.getAbsolutePath} --out ${zip.getAbsolutePath}")
+        out.println(s"unzip -q ${zip.getAbsolutePath} -d ${mdInstallDir.getAbsolutePath}")
+        out.close()
 
-            val result = sbt.Process(command="/bin/bash", arguments=Seq[String](script.getAbsolutePath)).!
+        val result = sbt.Process(command = "/bin/bash", arguments = Seq[String](script.getAbsolutePath)).!
 
-            require(0 <= result && result <= 2, s"Failed to execute script (exit=$result): ${script.getAbsolutePath}")
+        require(0 <= result && result <= 2, s"Failed to execute script (exit=$result): ${script.getAbsolutePath}")
 
-            val mdDynamicScriptsDir = mdInstallDir / "dynamicScripts"
-            IO.createDirectory(mdDynamicScriptsDir)
+        val mdDynamicScriptsDir = mdInstallDir / "dynamicScripts"
+        IO.createDirectory(mdDynamicScriptsDir)
 
-            val pfilter: DependencyFilter = new DependencyFilter {
-              def apply(c: String, m: ModuleID, a: Artifact): Boolean =
-                (a.`type` == "zip" || a.`type` == "resource") &&
-                  a.extension == "zip" &&
-                  a.name.endsWith("plugin_" + sbv)
-            }
-            val ps: Seq[File] = up.matching(pfilter)
-            ps.foreach { zip =>
-              val files = IO.unzip(zip, mdInstallDir)
-              s.log.info(
-                s"=> extracted ${files.size} Plugin files from zip: ${zip.getName}")
-            }
+        val pfilter: DependencyFilter = new DependencyFilter {
+          def apply(c: String, m: ModuleID, a: Artifact): Boolean =
+            (a.`type` == "zip" || a.`type` == "resource") &&
+              a.extension == "zip" &&
+              a.name.endsWith("plugin_" + sbv)
+        }
+        val ps: Seq[File] = up.matching(pfilter)
+        ps.foreach { zip =>
+          val files = IO.unzip(zip, mdInstallDir)
+          s.log.info(
+            s"=> extracted ${files.size} Plugin files from zip: ${zip.getName}")
+        }
 
-            val imceSetup = mdInstallDir / "bin" / "magicdraw.imce.setup.sh"
-            if (imceSetup.exists()) {
-              val setup = sbt.Process(command="/bin/bash", arguments=Seq[String](imceSetup.getAbsolutePath)).!
-              require(0 == setup, s"IMCE MD Setup error! ($setup)")
-            }
-            val zfilter: DependencyFilter = new DependencyFilter {
-              def apply(c: String, m: ModuleID, a: Artifact): Boolean =
-                (a.`type` == "zip" || a.`type` == "resource") &&
-                  a.extension == "zip" &&
-                  ! a.name.endsWith("plugin_" + sbv) &&
-                  ! a.classifier.getOrElse("").startsWith("part")
-            }
-            val zs: Seq[File] = up.matching(zfilter)
-            zs.foreach { zip =>
-              val files = IO.unzip(zip, mdDynamicScriptsDir)
-              s.log.info(
-                s"=> extracted ${files.size} DynamicScripts files from zip: ${zip.getName}")
-            }
+        val imceSetup = mdInstallDir / "bin" / "magicdraw.imce.setup.sh"
+        if (imceSetup.exists()) {
+          val setup = sbt.Process(command = "/bin/bash", arguments = Seq[String](imceSetup.getAbsolutePath)).!
+          require(0 == setup, s"IMCE MD Setup error! ($setup)")
+        }
+        val zfilter: DependencyFilter = new DependencyFilter {
+          def apply(c: String, m: ModuleID, a: Artifact): Boolean =
+            (a.`type` == "zip" || a.`type` == "resource") &&
+              a.extension == "zip" &&
+              !a.name.endsWith("plugin_" + sbv) &&
+              !a.classifier.getOrElse("").startsWith("part")
+        }
+        val zs: Seq[File] = up.matching(zfilter)
+        zs.foreach { zip =>
+          val files = IO.unzip(zip, mdDynamicScriptsDir)
+          s.log.info(
+            s"=> extracted ${files.size} DynamicScripts files from zip: ${zip.getName}")
+        }
 
-          } else
-            s.log.info(
-              s"=> use existing md.install.dir=$mdInstallDir")
-      //}
+      } else
+        s.log.info(
+          s"=> use existing md.install.dir=$mdInstallDir")
     },
 
     unmanagedJars in Compile := {
-        val prev = (unmanagedJars in Compile).value
-        val base = baseDirectory.value
-        val s = streams.value
-        val _ = extractArchives.value
+      val prev = (unmanagedJars in Compile).value
+      val base = baseDirectory.value
+      val s = streams.value
+      val _ = extractArchives.value
 
-        val mdInstallDir = base / "target" / "md.package"
+      val mdInstallDir = base / "target" / "md.package"
 
-        val libJars = ((mdInstallDir / "lib") ** "*.jar").get
-        s.log.info(s"jar libraries: ${libJars.size}")
+      val allJars = (mdInstallDir ** "*.jar").get.map(Attributed.blank)
+      s.log.info(s"=> Adding ${allJars.size} unmanaged jars")
 
-        val pluginJars = ((mdInstallDir / "plugins" / "gov.nasa.jpl.magicdraw.dynamicScripts") ** "*.jar").get
-        s.log.info(s"plugin libraries: ${pluginJars.size}")
-
-        val dsJars = ((mdInstallDir / "dynamicScripts") * "*" / "lib" ** "*.jar").get
-        s.log.info(s"jar dynamic script: ${dsJars.size}")
-
-        val mdJars = (libJars ++ pluginJars ++ dsJars).map { jar => Attributed.blank(jar) }
-
-        prev ++ mdJars
-    }//,
-
-    //compile <<= (compile in Compile) dependsOn extractArchives
+      allJars
+    }
   )
 
 def dynamicScriptsResourceSettings(projectName: String): Seq[Setting[_]] = {
@@ -398,18 +387,18 @@ def dynamicScriptsResourceSettings(projectName: String): Seq[Setting[_]] = {
       normalizedName.value + "_" + scalaBinaryVersion.value + "-" + version.value + "-resource",
 
     // contents of the '*-resource.zip' to be produced by 'universal:packageBin'
-    mappings in Universal <++= (
-      baseDirectory,
-      packageBin in Compile,
-      packageSrc in Compile,
-      packageDoc in Compile,
-      packageBin in Test,
-      packageSrc in Test,
-      packageDoc in Test,
-      streams) map {
-      (dir, bin, src, doc, binT, srcT, docT, s) =>
-        (dir ** "*.md").pair(rebase(dir, projectName)) ++
+    mappings in Universal in packageBin ++= {
+      val dir = baseDirectory.value
+      val bin = (packageBin in Compile).value
+      val src = (packageSrc in Compile).value
+      val doc = (packageDoc in Compile).value
+      val binT = (packageBin in Test).value
+      val srcT = (packageSrc in Test).value
+      val docT = (packageDoc in Test).value
+
+      (dir * "*.md").pair(rebase(dir, projectName)) ++
         (dir / "resources" ***).pair(rebase(dir, projectName)) ++
+        addIfExists(dir, ".classpath") ++
         addIfExists(bin, projectName + "/lib/" + bin.name) ++
         addIfExists(binT, projectName + "/lib/" + binT.name) ++
         addIfExists(src, projectName + "/lib.sources/" + src.name) ++
