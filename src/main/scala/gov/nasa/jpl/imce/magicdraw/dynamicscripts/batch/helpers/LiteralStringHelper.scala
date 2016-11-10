@@ -24,7 +24,7 @@ import scala.{AnyVal,Option,None,Some}
 import scala.Predef.String
 
 class LiteralStringHelper
-(val self: LiteralString)
+(@scala.transient val self: LiteralString)
 extends AnyVal {
 
   def value

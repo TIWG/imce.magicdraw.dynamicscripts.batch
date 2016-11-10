@@ -26,7 +26,7 @@ import scala.{AnyVal,Option,None,Some}
 import scala.Predef.{require,String}
 
 class InstanceSpecificationHelper
-(val self: InstanceSpecification)
+(@scala.transient val self: InstanceSpecification)
 extends AnyVal {
 
   def getValuesOfFeatureSlot
