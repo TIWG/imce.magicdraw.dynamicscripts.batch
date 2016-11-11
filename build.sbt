@@ -523,9 +523,9 @@ def dynamicScriptsResourceSettings(projectName: String): Seq[Setting[_]] = {
       val srcT = (packageSrc in Test).value
       val docT = (packageDoc in Test).value
 
+      (dir * ".classpath").pair(rebase(dir, projectName)) ++
       (dir * "*.md").pair(rebase(dir, projectName)) ++
       (dir / "resources" ***).pair(rebase(dir, projectName)) ++
-      addIfExists(dir, projectName + "/.classpath") ++
       addIfExists(bin, projectName + "/lib/" + bin.name) ++
       addIfExists(binT, projectName + "/lib/" + binT.name) ++
       addIfExists(src, projectName + "/lib.sources/" + src.name) ++
