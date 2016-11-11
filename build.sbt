@@ -388,14 +388,6 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
           _ = s.log.info(s"*** Extracted ${files.size} files")
         } yield ()
 
-        val imceSetup = mdInstallDir / "bin" / "magicdraw.imce.setup.sh"
-        if (imceSetup.exists()) {
-          val setup = sbt.Process(command = "/bin/bash", arguments = Seq[String](imceSetup.getAbsolutePath)).!
-          require(0 == setup, s"IMCE MD Setup error! ($setup)")
-          s.log.info(s"*** Executed bin/magicdraw.imce.setup.sh script")
-        } else {
-          s.log.info(s"*** No bin/magicdraw.imce.setup.sh script found!")
-        }
       } else
         s.log.info(
           s"=> use existing md.install.dir=$mdInstallDir")
