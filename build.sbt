@@ -78,7 +78,10 @@ def fromConfigurationReport
   net.virtualvoid.sbt.graph.ModuleGraph(root +: nodes, edges.flatten)
 }
 
-lazy val mdRoot = SettingKey[File]("md-root", "MagicDraw Installation Directory")
+lazy val mdInstallDirectory = SettingKey[File]("md-install-directory", "MagicDraw Installation Directory")
+
+mdInstallDirectory in Global :=
+  baseDirectory.value / "target" / "md.package"
 
 lazy val testsInputsDir = SettingKey[File]("tests-inputs-dir", "Directory to scan for input *.json tests")
 
@@ -128,7 +131,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     publishArtifact in Test := true,
 
-    unmanagedClasspath in Compile <++= unmanagedJars in Compile,
+    unmanagedClasspath in Compile ++= (unmanagedJars in Compile).value,
 
     resolvers += Resolver.bintrayRepo("jpl-imce", "gov.nasa.jpl.imce"),
     resolvers += Resolver.bintrayRepo("tiwg", "org.omg.tiwg"),
@@ -137,8 +140,6 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
     // for debugging: Seq("-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5005"),
 
     testsInputsDir := baseDirectory.value / "resources" / "tests",
-
-    mdRoot in ThisBuild := baseDirectory.value / "target" / "md.package",
 
     testsResultDir := baseDirectory.value / "target" / "md.testResults",
 
@@ -151,10 +152,10 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
       // Wipe any existing tests results directory and create a fresh one
       val resultsDir = testsResultDir.value
       if (resultsDir.exists) {
-        s.log.info(s"# Deleting existing results directory: $resultsDir")
+        s.log.warn(s"# Deleting existing results directory: $resultsDir")
         IO.delete(resultsDir)
       }
-      s.log.info(s"# Creating results directory: $resultsDir")
+      s.log.warn(s"# Creating results directory: $resultsDir")
       IO.createDirectory(resultsDir)
       require(
         resultsDir.exists && resultsDir.canWrite,
@@ -162,7 +163,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     },
 
-    test in Test <<= (test in Test) dependsOn testsResultsSetupTask,
+    test in Test := (test in Test).dependsOn(testsResultsSetupTask).value,
 
     parallelExecution in Test := false,
 
@@ -171,7 +172,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
     testGrouping in Test := {
       val original = (testGrouping in Test).value
       val tests_dir = testsInputsDir.value
-      val md_install_dir = mdRoot.value
+      val md_install_dir = mdInstallDirectory.value
       val tests_results_dir = testsResultDir.value
       val pas = (packageBin in Universal).value
       val jvmFlags = mdJVMFlags.value
@@ -209,7 +210,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
       val ds_dir = md_install_dir / "dynamicScripts"
 
       val files = IO.unzip(pas, ds_dir)
-      s.log.info(
+      s.log.warn(
         s"=> Installed ${files.size} " +
           s"files extracted from zip: $pas")
 
@@ -222,7 +223,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
           .split(":")
           .map(md_install_dir / _)
           .toSeq
-      s.log.info(s"# MD BOOT CLASSPATH: ${mdBoot.mkString("\n", "\n", "\n")}")
+      s.log.warn(s"# MD BOOT CLASSPATH: ${mdBoot.mkString("\n", "\n", "\n")}")
 
       val mdClasspath =
         mdProperties
@@ -230,7 +231,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
           .split(":")
           .map(md_install_dir / _)
           .toSeq
-      s.log.info(s"# MD CLASSPATH: ${mdClasspath.mkString("\n", "\n", "\n")}")
+      s.log.warn(s"# MD CLASSPATH: ${mdClasspath.mkString("\n", "\n", "\n")}")
 
       val imceSetupProperties = IO.readLines(md_install_dir / "bin" / "magicdraw.imce.setup.sh")
 
@@ -243,7 +244,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
           .split("\\\\+:")
           .map(md_install_dir / _)
           .toSeq
-      s.log.info(s"# IMCE BOOT: ${imceBoot.mkString("\n", "\n", "\n")}")
+      s.log.warn(s"# IMCE BOOT: ${imceBoot.mkString("\n", "\n", "\n")}")
 
       val imcePrefix =
         imceSetupProperties
@@ -254,23 +255,23 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
           .split("\\\\+:")
           .map(md_install_dir / _)
           .toSeq
-      s.log.info(s"# IMCE CLASSPATH Prefix: ${imcePrefix.mkString("\n", "\n", "\n")}")
+      s.log.warn(s"# IMCE CLASSPATH Prefix: ${imcePrefix.mkString("\n", "\n", "\n")}")
 
       original.map { group =>
 
-        s.log.info(s"# ${env.size} env properties")
+        s.log.warn(s"# ${env.size} env properties")
         env.keySet.toList.sorted.foreach { k =>
-          s.log.info(s"env[$k]=${env.get(k)}")
+          s.log.warn(s"env[$k]=${env.get(k)}")
         }
-        s.log.info(s"# ------")
+        s.log.warn(s"# ------")
 
-        s.log.info(s"# ${jOpts.size} java options")
-        s.log.info(jOpts.mkString("\n"))
-        s.log.info(s"# ------")
+        s.log.warn(s"# ${jOpts.size} java options")
+        s.log.warn(jOpts.mkString("\n"))
+        s.log.warn(s"# ------")
 
-        s.log.info(s"# ${jvmFlags.size} jvm flags")
-        s.log.info(jvmFlags.mkString("\n"))
-        s.log.info(s"# ------")
+        s.log.warn(s"# ${jvmFlags.size} jvm flags")
+        s.log.warn(jvmFlags.mkString("\n"))
+        s.log.warn(s"# ------")
 
         val testPropertiesFile =
           md_install_dir.toPath.resolve("data/imce.properties").toFile
@@ -313,7 +314,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
             ("DYNAMIC_SCRIPTS_RESULTS_DIR" -> tests_results_dir.getAbsolutePath)
         )
 
-        s.log.info(s"# working directory: $md_install_dir")
+        s.log.warn(s"# working directory: $md_install_dir")
 
         group.copy(runPolicy = Tests.SubProcess(forkOptions))
       }
@@ -334,7 +335,8 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
     extractArchives := {
       val s = streams.value
-      val mdInstallDir = (mdRoot in ThisBuild).value
+      val up = update.value
+      val mdInstallDir = (mdInstallDirectory in ThisBuild).value
       if (!mdInstallDir.exists) {
 
         val crossV = CrossVersion(scalaVersion.value, scalaBinaryVersion.value)(projectID.value)
@@ -343,34 +345,73 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
         val compileDepGraph =
           net.virtualvoid.sbt.graph.DependencyGraphKeys.ignoreMissingUpdate.value.configuration("compile").get
 
-        // @see https://github.com/jrudolph/sbt-dependency-graph/issues/113
-        val g1 = fromConfigurationReport(runtimeDepGraph, crossV, zipFileSelector)
+        val mdParts = (for {
+          cReport <- up.configurations
+          if cReport.configuration == "compile"
+          mReport <- cReport.modules
+          if mReport.module.organization == "org.omg.tiwg.vendor.nomagic"
+          (artifact, archive) <- mReport.artifacts
+        } yield archive).sorted
 
-        for {
-          module <- g1.nodes
-          if module.id.organisation == "org.omg.tiwg.vendor.nomagic"
-          archive <- module.jarFile
-          extractFolder = mdInstallDir
-          _ = s.log.info(s"*** Extracting MD: $archive")
-          _ = s.log.info(s"*** Extract to: $extractFolder")
-          files = IO.unzip(archive, extractFolder)
-          _ = require(files.nonEmpty)
-          _ = s.log.info(s"*** Extracted ${files.size} files")
-        } yield ()
+        {
+          s.log.warn(s"Extracting MagicDraw from ${mdParts.size} parts:")
+          mdParts.foreach { p => s.log.warn(p.getAbsolutePath) }
 
-        // @see https://github.com/jrudolph/sbt-dependency-graph/issues/113
-        val g2 = fromConfigurationReport(compileDepGraph, crossV, pluginFileSelector)
+          val merged = File.createTempFile("md_merged", ".zip")
+          println(s"merged: ${merged.getAbsolutePath}")
 
-        for {
-          module <- g2.nodes
-          archive <- module.jarFile
-          extractFolder = mdInstallDir
-          _ = s.log.info(s"*** Extracting Plugin: $archive")
-          _ = s.log.info(s"*** Extract to: $extractFolder")
-          files = IO.unzip(archive, extractFolder)
-          _ = require(files.nonEmpty)
-          _ = s.log.info(s"*** Extracted ${files.size} files")
-        } yield ()
+          val zip = File.createTempFile("md_no_install", ".zip")
+          println(s"zip: ${zip.getAbsolutePath}")
+
+          val script = File.createTempFile("unzip_md", ".sh")
+          println(s"script: ${script.getAbsolutePath}")
+
+          val out = new java.io.PrintWriter(new java.io.FileOutputStream(script))
+          out.println("#!/bin/bash")
+          out.println(mdParts.map(_.getAbsolutePath).mkString("cat ", " ", s" > ${merged.getAbsolutePath}"))
+          out.println(s"zip -FF ${merged.getAbsolutePath} --out ${zip.getAbsolutePath}")
+          out.println(s"unzip -q ${zip.getAbsolutePath} -d ${mdInstallDir.getAbsolutePath}")
+          out.close()
+
+          val result = sbt.Process(command = "/bin/bash", arguments = Seq[String](script.getAbsolutePath)).!
+          require(0 <= result && result <= 2, s"Failed to execute script (exit=$result): ${script.getAbsolutePath}")
+          s.log.warn(s"Extracted.")
+        }
+
+        val pluginParts = (for {
+          cReport <- up.configurations
+          if cReport.configuration == "compile"
+          mReport <- cReport.modules
+          (artifact, archive) <- mReport.artifacts
+          if artifact.name.startsWith("imce.dynamic_scripts.magicdraw.plugin")
+          if artifact.classifier.getOrElse("").startsWith("part")
+        } yield archive).sorted
+
+        {
+          s.log.warn(s"Extracting Plugin from ${pluginParts.size} parts:")
+          pluginParts.foreach { p => s.log.warn(p.getAbsolutePath) }
+
+          val merged = File.createTempFile("plugin_merged", ".zip")
+          println(s"merged: ${merged.getAbsolutePath}")
+
+          val zip = File.createTempFile("plugin_resource", ".zip")
+          println(s"zip: ${zip.getAbsolutePath}")
+
+          val script = File.createTempFile("unzip_plugin", ".sh")
+          println(s"script: ${script.getAbsolutePath}")
+
+          val out = new java.io.PrintWriter(new java.io.FileOutputStream(script))
+          out.println("#!/bin/bash")
+          out.println(pluginParts.map(_.getAbsolutePath).mkString("cat ", " ", s" > ${merged.getAbsolutePath}"))
+          out.println(s"zip -FF ${merged.getAbsolutePath} --out ${zip.getAbsolutePath}")
+          out.println(s"unzip -q ${zip.getAbsolutePath} -d ${mdInstallDir.getAbsolutePath}")
+          out.close()
+
+          val result = sbt.Process(command = "/bin/bash", arguments = Seq[String](script.getAbsolutePath)).!
+          require(0 <= result && result <= 2, s"Failed to execute script (exit=$result): ${script.getAbsolutePath}")
+          s.log.warn(s"Extracted.")
+
+        }
 
         // @see https://github.com/jrudolph/sbt-dependency-graph/issues/113
         val g3 = fromConfigurationReport(compileDepGraph, crossV, dsFileSelector)
@@ -381,96 +422,18 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
           archive <- module.jarFile
           extractFolder = mdInstallDir / "dynamicScripts"
           _ = IO.createDirectory(extractFolder)
-          _ = s.log.info(s"*** Extracting DynamicScripts: $archive")
-          _ = s.log.info(s"*** Extract to: $extractFolder")
+          _ = s.log.warn(s"*** Extracting DynamicScripts: $archive")
+          _ = s.log.warn(s"*** Extract to: $extractFolder")
           files = IO.unzip(archive, extractFolder)
           _ = require(files.nonEmpty)
-          _ = s.log.info(s"*** Extracted ${files.size} files")
+          _ = s.log.warn(s"*** Extracted ${files.size} files")
         } yield ()
 
       } else
-        s.log.info(
+        s.log.warn(
           s"=> use existing md.install.dir=$mdInstallDir")
     },
-//    extractArchives := {
-//      val base = baseDirectory.value
-//      val up = update.value
-//      val s = streams.value
-//      val mdInstallDir = (mdRoot in ThisBuild).value
-//      val sbv = scalaBinaryVersion.value
-//
-//      if (!mdInstallDir.exists) {
-//
-//        val parts = (for {
-//          cReport <- up.configurations
-//          if cReport.configuration == "compile"
-//          mReport <- cReport.modules
-//          if mReport.module.organization == "org.omg.tiwg.vendor.nomagic"
-//          (artifact, archive) <- mReport.artifacts
-//        } yield archive).sorted
-//
-//        s.log.info(s"Extracting MagicDraw from ${parts.size} parts:")
-//        parts.foreach { p => s.log.info(p.getAbsolutePath) }
-//
-//        val merged = File.createTempFile("md_merged", ".zip")
-//        println(s"merged: ${merged.getAbsolutePath}")
-//
-//        val zip = File.createTempFile("md_no_install", ".zip")
-//        println(s"zip: ${zip.getAbsolutePath}")
-//
-//        val script = File.createTempFile("unzip_md", ".sh")
-//        println(s"script: ${script.getAbsolutePath}")
-//
-//        val out = new java.io.PrintWriter(new java.io.FileOutputStream(script))
-//        out.println("#!/bin/bash")
-//        out.println(parts.map(_.getAbsolutePath).mkString("cat ", " ", s" > ${merged.getAbsolutePath}"))
-//        out.println(s"zip -FF ${merged.getAbsolutePath} --out ${zip.getAbsolutePath}")
-//        out.println(s"unzip -q ${zip.getAbsolutePath} -d ${mdInstallDir.getAbsolutePath}")
-//        out.close()
-//
-//        val result = sbt.Process(command = "/bin/bash", arguments = Seq[String](script.getAbsolutePath)).!
-//
-//        require(0 <= result && result <= 2, s"Failed to execute script (exit=$result): ${script.getAbsolutePath}")
-//
-//        val mdDynamicScriptsDir = mdInstallDir / "dynamicScripts"
-//        IO.createDirectory(mdDynamicScriptsDir)
-//
-//        val pfilter: DependencyFilter = new DependencyFilter {
-//          def apply(c: String, m: ModuleID, a: Artifact): Boolean =
-//            (a.`type` == "zip" || a.`type` == "resource") &&
-//              a.extension == "zip" &&
-//              a.name.endsWith("plugin_" + sbv)
-//        }
-//        val ps: Seq[File] = up.matching(pfilter)
-//        ps.foreach { zip =>
-//          val files = IO.unzip(zip, mdInstallDir)
-//          s.log.info(
-//            s"=> extracted ${files.size} Plugin files from zip: ${zip.getName}")
-//        }
-//
-//        val imceSetup = mdInstallDir / "bin" / "magicdraw.imce.setup.sh"
-//        if (imceSetup.exists()) {
-//          val setup = sbt.Process(command = "/bin/bash", arguments = Seq[String](imceSetup.getAbsolutePath)).!
-//          require(0 == setup, s"IMCE MD Setup error! ($setup)")
-//        }
-//        val zfilter: DependencyFilter = new DependencyFilter {
-//          def apply(c: String, m: ModuleID, a: Artifact): Boolean =
-//            (a.`type` == "zip" || a.`type` == "resource") &&
-//              a.extension == "zip" &&
-//              !a.name.endsWith("plugin_" + sbv) &&
-//              !a.classifier.getOrElse("").startsWith("part")
-//        }
-//        val zs: Seq[File] = up.matching(zfilter)
-//        zs.foreach { zip =>
-//          val files = IO.unzip(zip, mdDynamicScriptsDir)
-//          s.log.info(
-//            s"=> extracted ${files.size} DynamicScripts files from zip: ${zip.getName}")
-//        }
-//
-//      } else
-//        s.log.info(
-//          s"=> use existing md.install.dir=$mdInstallDir")
-//    },
+
 
     unmanagedJars in Compile := {
       val prev = (unmanagedJars in Compile).value
@@ -481,7 +444,7 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
       val mdInstallDir = base / "target" / "md.package"
 
       val allJars = (mdInstallDir ** "*.jar").get.map(Attributed.blank)
-      s.log.info(s"=> Adding ${allJars.size} unmanaged jars")
+      s.log.warn(s"=> Adding ${allJars.size} unmanaged jars")
 
       allJars
     }
