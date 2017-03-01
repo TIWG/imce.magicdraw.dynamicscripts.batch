@@ -306,14 +306,18 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
             "-DLOCALCONFIG=false",
             "-DWINCONFIG=false",
             "-DHOME=" + md_install_dir.getAbsolutePath,
-            s"-Ddebug.properties=$testPropertiesFile",
-            "-Ddebug.properties.file=imce.properties"
+            s"-Ddebug.properties.file=$testPropertiesFile",
+            "-DFL_FORCE_USAGE=true",
+            "-DFL_SERVER_ADDRESS=cae-lic04.jpl.nasa.gov",
+            "-DFL_SERVER_PORT=1101",
+            "-DFL_EDITION=enterprise"
+            //"-Ddebug.properties.file=imce.properties"
           ) ++ jvmFlags,
           workingDirectory = Some(md_install_dir),
           envVars = env +
             ("debug.dir" -> md_install_dir.getAbsolutePath) +
             ("FL_FORCE_USAGE" -> "true") +
-            ("FL_SERVER_ADDRESS" -> "cae-lic01.jpl.nasa.gov") +
+            ("FL_SERVER_ADDRESS" -> "cae-lic04.jpl.nasa.gov") +
             ("FL_SERVER_PORT" -> "1101") +
             ("FL_EDITION" -> "enterprise") +
             ("DYNAMIC_SCRIPTS_TESTS_DIR" -> tests_dir.getAbsolutePath) +
