@@ -424,7 +424,42 @@ lazy val core = Project("imce-magicdraw-dynamicscripts-batch", file("."))
 
       val mdInstallDir = base / "target" / "md.package"
 
-      val allJars = (mdInstallDir ** "*.jar").get.map(Attributed.blank)
+      s.log.warn(s"=> mdInstallDir: ${mdInstallDir}")
+
+      s.log.warn(s"=> mdLibJars:")
+      val mdLibJars
+      : Seq[File]
+      = (mdInstallDir / "lib" ** "*")
+        .filter{f => f.isDirectory && ((f) * "*.jar").get.nonEmpty}
+        .get
+      mdLibJars.foreach(f => s.log.warn(s"==> ${f}"))
+
+      s.log.warn(s"=> mdPluginsJars:")
+      val mdPluginsJars
+      : Seq[File]
+      = (mdInstallDir / "plugins" / "gov.nasa.jpl.magicdraw.dynamicScripts" ** "*")
+        .filter{f => f.isDirectory && ((f) * "*.jar").get.nonEmpty}
+        .get
+      mdPluginsJars.foreach(f => s.log.warn(s"==> ${f}"))
+
+      s.log.warn(s"=> mdDynScJars:")
+      val mdDynScJars
+      : Seq[File]
+      = (mdInstallDir / "dynamicScripts" ** "*" / "lib")
+        .filter{f => f.isDirectory && ((f) * "*.jar").get.nonEmpty}
+        .get
+      mdDynScJars.foreach(f => s.log.warn(s"==> ${f}"))
+
+      val allDirs
+      : Seq[File]
+      = mdLibJars ++ mdPluginsJars ++ mdDynScJars
+
+      //val allJars = mdLibJars ++ mdPluginsJars ++ mdDynScJars ++ prev//(mdInstallDir ** "*.jar").get.map(Attributed.blank)
+      val allJars
+      : Keys.Classpath
+      = allDirs
+        .flatMap { dir => (dir ** "*.jar").get.map(Attributed.blank) }
+
       s.log.warn(s"=> Adding ${allJars.size} unmanaged jars")
 
       allJars
