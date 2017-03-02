@@ -2,6 +2,6 @@
 object Versions {
 
   // this project
-  val version = "3.17.3"
+  val version = "3.17.4"
 
 }

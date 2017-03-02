@@ -439,14 +439,19 @@ class ExecuteDynamicScriptAsSilentMagicDrawTestCase
           Option
             .apply(SilentMDTestAPI.TeamworkLogin(teamworkServer, teamworkPort, user, pw)) match {
             case None =>
-              fail("Cannot login on Teamwork server: " + server_connection_info)
+              fail("No result from login on Teamwork server: " + server_connection_info)
 
-            case Some(s) =>
+            case Some(false) =>
+              fail("Login failed on Teamwork server: " + server_connection_info)
+
+            case Some(true) =>
               System.out.println(
                 step+") successful server login for: " + server_connection_info)
 
               nonFatalCatch[Unit]
                 .withApply { (t: java.lang.Throwable) =>
+                  System.err.println("Exception!")
+                  t.printStackTrace(System.err)
                   fail(t.getMessage)
                 }
                 .apply {
