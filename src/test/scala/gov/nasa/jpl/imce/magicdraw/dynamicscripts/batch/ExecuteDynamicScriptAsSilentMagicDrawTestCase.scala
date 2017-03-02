@@ -127,8 +127,16 @@ object SilentMDTestAPI {
    * a second time from test code where the exception will force a test failure.
    */
   def startMD(): Unit =
-    MDUtils.launchMagicDrawSilently( Array[String] { "DEVELOPER" } )
-    //com.nomagic.magicdraw.tests.common.TestEnvironment.startMagicDrawUML()
+    MDUtils.launchMagicDrawSilently(Array[String] {
+      "DEVELOPER"
+    })
+
+  //com.nomagic.magicdraw.tests.common.TestEnvironment.startMagicDrawUML()
+
+  def TeamworkLogin(server: String, port: Int, user: String, password: String)
+  : Boolean
+  = TeamworkUtils.login(server, port, user, password)
+
 }
 
 @scala.deprecated("", "")
@@ -429,7 +437,7 @@ class ExecuteDynamicScriptAsSilentMagicDrawTestCase
         }
 
           Option
-            .apply(TeamworkUtils.loginWithSession(teamworkServer, teamworkPort, user, pw)) match {
+            .apply(SilentMDTestAPI.TeamworkLogin(teamworkServer, teamworkPort, user, pw)) match {
             case None =>
               fail("Cannot login on Teamwork server: " + server_connection_info)
 
