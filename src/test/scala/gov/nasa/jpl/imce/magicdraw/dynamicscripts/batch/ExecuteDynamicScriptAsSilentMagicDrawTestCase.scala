@@ -208,6 +208,20 @@ object ExecuteDynamicScriptAsSilentMagicDrawTestCase {
     val t2spec = MagicDrawTestSpec.formats.writes(t2)
     System.out.println(t2spec)
 
+    val t3 = SimpleMagicDrawTestSpec(
+      requiredPlugins=List("a"),
+      dynamicScriptFiles=List("f.dynamicScripts"),
+      projectLocation = Some(MagicDrawTeamworkProjectLocation(
+        teamworkServer="cae-fn-tw.jpl.nasa.gov",
+        teamworkPort=18001,
+        teamworkUser=Some("imce-ci"),
+        teamworkPassword=Some("password"),
+        teamworkProjectPath="IMCE Sample Spacecraft Model")),
+      testScript = InvokeToolbarMenu(className="a.b", methodName="c"))
+
+    val t3spec = MagicDrawTestSpec.formats.writes(t3)
+    System.out.println(t3spec)
+
     val jsonFilter = new java.util.function.BiPredicate[Path, BasicFileAttributes] {
 
       override def test( t: Path, u: BasicFileAttributes ): Boolean =
@@ -270,6 +284,7 @@ object ExecuteDynamicScriptAsSilentMagicDrawTestCase {
                     None
 
                   case Success(JsSuccess(info, _)) =>
+                    System.out.println(s"# Read MagicDrawTestSpec: $specPath")
                     val rel = testsFolder.relativize(new File(specPath.toString.stripSuffix(".json")).toPath)
                     val specResultsDir = resultsPath.resolve(rel)
                     Files.createDirectories(specResultsDir)
@@ -436,32 +451,32 @@ class ExecuteDynamicScriptAsSilentMagicDrawTestCase
             s
         }
 
-          Option
-            .apply(SilentMDTestAPI.TeamworkLogin(teamworkServer, teamworkPort, user, pw)) match {
-            case None =>
-              fail("No result from login on Teamwork server: " + server_connection_info)
+        Option
+          .apply(SilentMDTestAPI.TeamworkLogin(teamworkServer, teamworkPort, user, pw)) match {
+          case None =>
+            fail("No result from login on Teamwork server: " + server_connection_info)
 
-            case Some(false) =>
-              fail("Login failed on Teamwork server: " + server_connection_info)
+          case Some(false) =>
+            fail("Login failed on Teamwork server: " + server_connection_info + "; teamwork user="+user + "; teamwork password="+pw.substring(1,1)+"***...")
 
-            case Some(true) =>
-              System.out.println(
-                step+") successful server login for: " + server_connection_info)
+          case Some(true) =>
+            System.out.println(
+              step + ") successful server login for: " + server_connection_info)
 
-              nonFatalCatch[Unit]
-                .withApply { (t: java.lang.Throwable) =>
-                  System.err.println("Exception!")
-                  t.printStackTrace(System.err)
-                  fail(t.getMessage)
-                }
-                .apply {
-                  val pDescriptor = TeamworkUtils.getRemoteProjectDescriptorByQualifiedName(teamworkProjectPath)
-                  System.out.println(
-                    step+") successfully retrieved the descriptor for: " + server_connection_info)
+            nonFatalCatch[Unit]
+              .withApply { (t: java.lang.Throwable) =>
+                System.err.println("Exception!")
+                t.printStackTrace(System.err)
+                fail(t.getMessage)
+              }
+              .apply {
+                val pDescriptor = TeamworkUtils.getRemoteProjectDescriptorByQualifiedName(teamworkProjectPath)
+                System.out.println(
+                  step + ") successfully retrieved the descriptor for: " + server_connection_info)
 
-                  testProject = Some(loadTeamworkProject(server_connection_info, pDescriptor))
-                }
-          }
+                testProject = Some(loadTeamworkProject(server_connection_info, pDescriptor))
+              }
+        }
     }
   }
 
